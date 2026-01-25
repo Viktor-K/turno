@@ -307,4 +307,96 @@ describe('useSchedule Hook', () => {
       expect(Object.keys(result.current.schedule).length).toBe(0);
     });
   });
+
+  describe('Date Lookup (Timezone Fix)', () => {
+    it('should retrieve schedule for weekend Date object correctly', async () => {
+      const { result } = renderHook(() => useSchedule(2026));
+
+      act(() => {
+        result.current.generateSchedule();
+      });
+
+      // Find a Saturday in the schedule
+      const saturdayKey = Object.keys(result.current.schedule).find(dateStr => {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+        return date.getDay() === 6; // Saturday
+      });
+
+      expect(saturdayKey).toBeDefined();
+
+      // Create a Date object for the same Saturday
+      const [year, month, day] = saturdayKey.split('-').map(Number);
+      const saturdayDate = new Date(year, month - 1, day);
+
+      // getScheduleForDate should find the schedule using Date object
+      const daySchedule = result.current.getScheduleForDate(saturdayDate);
+
+      expect(daySchedule).not.toBeNull();
+      expect(daySchedule.shifts).toBeDefined();
+      expect(daySchedule.shifts.length).toBe(2); // Weekend should have 2 people
+    });
+
+    it('should retrieve schedule for Sunday Date object correctly', async () => {
+      const { result } = renderHook(() => useSchedule(2026));
+
+      act(() => {
+        result.current.generateSchedule();
+      });
+
+      // Find a Sunday in the schedule
+      const sundayKey = Object.keys(result.current.schedule).find(dateStr => {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+        return date.getDay() === 0; // Sunday
+      });
+
+      expect(sundayKey).toBeDefined();
+
+      // Create a Date object for the same Sunday
+      const [year, month, day] = sundayKey.split('-').map(Number);
+      const sundayDate = new Date(year, month - 1, day);
+
+      // getScheduleForDate should find the schedule using Date object
+      const daySchedule = result.current.getScheduleForDate(sundayDate);
+
+      expect(daySchedule).not.toBeNull();
+      expect(daySchedule.shifts).toBeDefined();
+      expect(daySchedule.shifts.length).toBe(2); // Weekend should have 2 people
+    });
+
+    it('should retrieve schedule using string date key correctly', async () => {
+      const { result } = renderHook(() => useSchedule(2026));
+
+      act(() => {
+        result.current.generateSchedule();
+      });
+
+      // Get first date in schedule
+      const firstDateKey = Object.keys(result.current.schedule)[0];
+
+      // Should work with string
+      const daySchedule = result.current.getScheduleForDate(firstDateKey);
+
+      expect(daySchedule).not.toBeNull();
+      expect(daySchedule.shifts).toBeDefined();
+    });
+
+    it('should check closure status correctly with Date object', async () => {
+      const { result } = renderHook(() => useSchedule(2026));
+
+      // Add a closure using string
+      act(() => {
+        result.current.addClosure('2026-03-15');
+      });
+
+      // Check using Date object
+      const closureDate = new Date(2026, 2, 15); // March 15, 2026
+      expect(result.current.isClosure(closureDate)).toBe(true);
+
+      // Check non-closure using Date object
+      const nonClosureDate = new Date(2026, 2, 16);
+      expect(result.current.isClosure(nonClosureDate)).toBe(false);
+    });
+  });
 });
