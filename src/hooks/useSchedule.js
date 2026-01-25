@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { generateYearSchedule, getScheduleStats } from '../utils/shiftGenerator';
+import { formatDate } from '../utils/dateUtils';
 
 const STORAGE_KEY = 'turno-schedule';
 const CLOSURES_KEY = 'turno-closures';
@@ -57,7 +58,7 @@ export const useSchedule = (initialYear = new Date().getFullYear()) => {
 
   // Add closure
   const addClosure = useCallback((date) => {
-    const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0];
+    const dateStr = typeof date === 'string' ? date : formatDate(date);
     if (!closures.includes(dateStr)) {
       const newClosures = [...closures, dateStr].sort();
       setClosures(newClosures);
@@ -74,7 +75,7 @@ export const useSchedule = (initialYear = new Date().getFullYear()) => {
 
   // Remove closure
   const removeClosure = useCallback((date) => {
-    const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0];
+    const dateStr = typeof date === 'string' ? date : formatDate(date);
     setClosures(prev => prev.filter(d => d !== dateStr));
   }, []);
 
@@ -93,13 +94,13 @@ export const useSchedule = (initialYear = new Date().getFullYear()) => {
 
   // Get schedule for a specific date
   const getScheduleForDate = useCallback((date) => {
-    const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0];
+    const dateStr = typeof date === 'string' ? date : formatDate(date);
     return schedule[dateStr] || null;
   }, [schedule]);
 
   // Check if date is a closure
   const isClosure = useCallback((date) => {
-    const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0];
+    const dateStr = typeof date === 'string' ? date : formatDate(date);
     return closures.includes(dateStr);
   }, [closures]);
 

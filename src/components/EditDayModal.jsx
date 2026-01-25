@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { DAYS_OF_WEEK, MONTHS, MEMBER_COLORS, SHIFTS, TEAM_MEMBERS } from '../utils/constants';
 import { validateChange, getAvailableMembers } from '../utils/constraintValidator';
+import { formatDate } from '../utils/dateUtils';
 
 const EditDayModal = ({ isOpen, onClose, date, daySchedule, schedule, onUpdateSchedule, onViolation }) => {
   const [localSchedule, setLocalSchedule] = useState(null);
@@ -12,7 +13,7 @@ const EditDayModal = ({ isOpen, onClose, date, daySchedule, schedule, onUpdateSc
   const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
   const dayName = DAYS_OF_WEEK[dayIndex];
   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-  const dateStr = date.toISOString().split('T')[0];
+  const dateStr = formatDate(date);
 
   const formatDateDisplay = (d) => {
     return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
