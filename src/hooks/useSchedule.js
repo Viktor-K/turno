@@ -45,9 +45,13 @@ export const useSchedule = (initialYear = new Date().getFullYear()) => {
   // Generate new schedule
   const generateSchedule = useCallback(() => {
     setIsLoading(true);
-    const { schedule: newSchedule, stats: newStats } = generateYearSchedule(year, closures);
-    setSchedule(newSchedule);
-    setStats(newStats);
+    try {
+      const { schedule: newSchedule, stats: newStats } = generateYearSchedule(year, closures);
+      setSchedule(newSchedule);
+      setStats(newStats);
+    } catch (error) {
+      console.error('Error generating schedule:', error);
+    }
     setIsLoading(false);
   }, [year, closures]);
 
