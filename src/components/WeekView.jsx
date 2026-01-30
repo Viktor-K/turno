@@ -36,25 +36,24 @@ const PersonChip = ({ member }) => {
   const colorClass = MEMBER_COLORS[member] || 'bg-gray-100 text-gray-700 border-gray-200';
 
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${colorClass}`}>
+    <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium border whitespace-nowrap ${colorClass}`}>
       {member}
     </span>
   );
 };
 
-// Fixed heights for each shift type
+// Fixed heights for each shift type (single column layout)
 const SHIFT_HEIGHTS = {
-  early: 'h-[60px]',      // 1 person
-  standard: 'h-[140px]',  // Multiple people (up to 6)
-  late: 'h-[60px]',       // 1 person
-  weekend: 'h-[80px]'     // 2 people
+  early: 'h-[52px]',      // 1 person
+  standard: 'h-[170px]',  // Multiple people (up to 6, stacked vertically)
+  late: 'h-[52px]',       // 1 person
+  weekend: 'h-[76px]'     // 2 people
 };
 
 const ShiftBlock = ({ shiftType, members, isEmpty }) => {
   const accentColor = SHIFT_ACCENTS[shiftType.id] || 'border-l-gray-400';
   const icon = SHIFT_ICONS[shiftType.id];
   const heightClass = SHIFT_HEIGHTS[shiftType.id] || 'h-[80px]';
-  const isStandard = shiftType.id === 'standard';
 
   return (
     <div className={`flex flex-col bg-white border border-gray-200 rounded-lg overflow-hidden border-l-4 ${accentColor} shadow-sm ${heightClass} ${isEmpty ? 'opacity-40' : ''}`}>
@@ -66,8 +65,8 @@ const ShiftBlock = ({ shiftType, members, isEmpty }) => {
         </div>
       </div>
 
-      {/* People chips - use grid for standard shift */}
-      <div className={`p-1.5 flex-1 overflow-hidden ${isStandard ? 'grid grid-cols-2 gap-1 content-start' : 'flex flex-wrap gap-1 content-start'}`}>
+      {/* People chips - vertical stack */}
+      <div className="p-1.5 flex-1 overflow-y-auto flex flex-col gap-1">
         {members.length > 0 ? (
           members.map(member => (
             <PersonChip key={member} member={member} />
