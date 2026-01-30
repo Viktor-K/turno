@@ -201,11 +201,13 @@ export const generateYearSchedule = (year, closures = []) => {
 
     // Members working weekend cannot work Thu/Fri and cannot have early/late shifts all week
     const weekendWorkers = weekendPair;
-    const availableForSpecialShifts = TEAM_MEMBERS.filter(m => !weekendWorkers.includes(m));
     const availableForThursFri = TEAM_MEMBERS.filter(m => !weekendWorkers.includes(m));
 
-    // Track who gets special shifts this week
-    const weekSpecialShiftWorkers = new Set();
+    // Track who gets each type of special shift this week (separately)
+    // Rule: A person can only work ONE early shift per week, and ONE late shift per week
+    // But they CAN work both one early AND one late in the same week
+    const weekEarlyWorkers = new Set();  // People who already worked 8-17 this week
+    const weekLateWorkers = new Set();   // People who already worked 12-21 this week
 
     // Generate schedule for each day of the week
     for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
@@ -247,10 +249,11 @@ export const generateYearSchedule = (year, closures = []) => {
       const availableToday = isThursOrFri ? availableForThursFri : TEAM_MEMBERS;
 
       // Assign EARLY shift (8:00 - 17:00) - one person only
+      // Exclude: weekend workers, people already assigned today, people who already did early THIS WEEK
       const earlyMember = selectMemberForSpecialShift(
         stats,
         'earlyShifts',
-        [...weekendWorkers, ...assignedToday],
+        [...weekendWorkers, ...assignedToday, ...weekEarlyWorkers],
         weekIndex,
         priorityForEarly
       );
@@ -260,14 +263,16 @@ export const generateYearSchedule = (year, closures = []) => {
         assignedToday.add(earlyMember);
         stats[earlyMember].earlyShifts++;
         stats[earlyMember].lastEarlyWeek = weekIndex;
-        weekSpecialShiftWorkers.add(earlyMember);
+        weekEarlyWorkers.add(earlyMember);  // Track this person did early this week
       }
 
       // Assign LATE shift (12:00 - 21:00) - one person only
+      // Exclude: weekend workers, people already assigned today, people who already did late THIS WEEK
+      // Note: people who did early CAN still do late (they are different special shifts)
       const lateMember = selectMemberForSpecialShift(
         stats,
         'lateShifts',
-        [...weekendWorkers, ...assignedToday],
+        [...weekendWorkers, ...assignedToday, ...weekLateWorkers],
         weekIndex,
         priorityForLate
       );
@@ -277,7 +282,7 @@ export const generateYearSchedule = (year, closures = []) => {
         assignedToday.add(lateMember);
         stats[lateMember].lateShifts++;
         stats[lateMember].lastLateWeek = weekIndex;
-        weekSpecialShiftWorkers.add(lateMember);
+        weekLateWorkers.add(lateMember);  // Track this person did late this week
       }
 
       // Assign STANDARD shifts (9:00 - 18:00) - remaining members
@@ -294,12 +299,15 @@ export const generateYearSchedule = (year, closures = []) => {
     }
 
     // Calculate priority for next week
-    // Members who didn't get special shifts this week get priority next week
+    // Members who didn't get a specific special shift this week get priority for that shift next week
     priorityForEarly = TEAM_MEMBERS.filter(m =>
       !weekendWorkers.includes(m) &&
-      !weekSpecialShiftWorkers.has(m)
+      !weekEarlyWorkers.has(m)
     );
-    priorityForLate = [...priorityForEarly];
+    priorityForLate = TEAM_MEMBERS.filter(m =>
+      !weekendWorkers.includes(m) &&
+      !weekLateWorkers.has(m)
+    );
   });
 
   return { schedule, stats };

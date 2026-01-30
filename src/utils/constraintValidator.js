@@ -8,7 +8,9 @@ export const CONSTRAINT_TYPES = {
   SINGLE_EARLY_SHIFT: 'single_early_shift',
   SINGLE_LATE_SHIFT: 'single_late_shift',
   DUPLICATE_ASSIGNMENT: 'duplicate_assignment',
-  WEEKEND_FAIR_ROTATION: 'weekend_fair_rotation'
+  WEEKEND_FAIR_ROTATION: 'weekend_fair_rotation',
+  EARLY_ONCE_PER_WEEK: 'early_once_per_week',
+  LATE_ONCE_PER_WEEK: 'late_once_per_week'
 };
 
 // Constraint messages
@@ -18,7 +20,9 @@ export const CONSTRAINT_MESSAGES = {
   [CONSTRAINT_TYPES.SINGLE_EARLY_SHIFT]: 'Il turno 8:00-17:00 può essere assegnato a una sola persona al giorno',
   [CONSTRAINT_TYPES.SINGLE_LATE_SHIFT]: 'Il turno 12:00-21:00 può essere assegnato a una sola persona al giorno',
   [CONSTRAINT_TYPES.DUPLICATE_ASSIGNMENT]: 'La persona è già assegnata a un altro turno in questo giorno',
-  [CONSTRAINT_TYPES.WEEKEND_FAIR_ROTATION]: 'Questa persona non può lavorare nel weekend finché tutti gli altri (eccetto il suo ultimo partner) non abbiano lavorato almeno un weekend'
+  [CONSTRAINT_TYPES.WEEKEND_FAIR_ROTATION]: 'Questa persona non può lavorare nel weekend finché tutti gli altri (eccetto il suo ultimo partner) non abbiano lavorato almeno un weekend',
+  [CONSTRAINT_TYPES.EARLY_ONCE_PER_WEEK]: 'Questa persona ha già un turno 8:00-17:00 questa settimana',
+  [CONSTRAINT_TYPES.LATE_ONCE_PER_WEEK]: 'Questa persona ha già un turno 12:00-21:00 questa settimana'
 };
 
 // Analyze all weekend assignments to build history
@@ -160,6 +164,44 @@ const hasSpecialShiftsInWeek = (schedule, weekStartDate, member) => {
   return false;
 };
 
+// Check if a person already has an early shift (8-17) in the week
+const hasEarlyShiftInWeek = (schedule, weekStartDate, member, excludeDateStr = null) => {
+  for (let i = 0; i < 5; i++) { // Monday to Friday
+    const day = addDays(weekStartDate, i);
+    const dayKey = formatDate(day);
+
+    // Skip the day we're checking for (to allow moving within same day)
+    if (dayKey === excludeDateStr) continue;
+
+    if (schedule[dayKey]?.shifts) {
+      const hasEarly = schedule[dayKey].shifts.some(
+        s => s.member === member && s.shift.id === 'early'
+      );
+      if (hasEarly) return true;
+    }
+  }
+  return false;
+};
+
+// Check if a person already has a late shift (12-21) in the week
+const hasLateShiftInWeek = (schedule, weekStartDate, member, excludeDateStr = null) => {
+  for (let i = 0; i < 5; i++) { // Monday to Friday
+    const day = addDays(weekStartDate, i);
+    const dayKey = formatDate(day);
+
+    // Skip the day we're checking for (to allow moving within same day)
+    if (dayKey === excludeDateStr) continue;
+
+    if (schedule[dayKey]?.shifts) {
+      const hasLate = schedule[dayKey].shifts.some(
+        s => s.member === member && s.shift.id === 'late'
+      );
+      if (hasLate) return true;
+    }
+  }
+  return false;
+};
+
 // Validate a proposed change
 export const validateChange = (schedule, dateStr, member, newShiftId, currentAssignment = null) => {
   const violations = [];
@@ -194,6 +236,14 @@ export const validateChange = (schedule, dateStr, member, newShiftId, currentAss
         message: CONSTRAINT_MESSAGES[CONSTRAINT_TYPES.SINGLE_EARLY_SHIFT]
       });
     }
+
+    // Check if person already has an early shift this week (only one per week)
+    if (hasEarlyShiftInWeek(schedule, weekStart, member, dateStr)) {
+      violations.push({
+        type: CONSTRAINT_TYPES.EARLY_ONCE_PER_WEEK,
+        message: CONSTRAINT_MESSAGES[CONSTRAINT_TYPES.EARLY_ONCE_PER_WEEK]
+      });
+    }
   }
 
   if (newShiftId === 'late') {
@@ -204,6 +254,14 @@ export const validateChange = (schedule, dateStr, member, newShiftId, currentAss
       violations.push({
         type: CONSTRAINT_TYPES.SINGLE_LATE_SHIFT,
         message: CONSTRAINT_MESSAGES[CONSTRAINT_TYPES.SINGLE_LATE_SHIFT]
+      });
+    }
+
+    // Check if person already has a late shift this week (only one per week)
+    if (hasLateShiftInWeek(schedule, weekStart, member, dateStr)) {
+      violations.push({
+        type: CONSTRAINT_TYPES.LATE_ONCE_PER_WEEK,
+        message: CONSTRAINT_MESSAGES[CONSTRAINT_TYPES.LATE_ONCE_PER_WEEK]
       });
     }
   }
@@ -288,6 +346,15 @@ export const getAvailableMembers = (schedule, dateStr, shiftId, excludeMembers =
 
       // Can't have special shifts
       if (shiftId === 'early' || shiftId === 'late') return false;
+    }
+
+    // Special shift constraints: only one of each type per week
+    if (shiftId === 'early') {
+      if (hasEarlyShiftInWeek(schedule, weekStart, member, dateStr)) return false;
+    }
+
+    if (shiftId === 'late') {
+      if (hasLateShiftInWeek(schedule, weekStart, member, dateStr)) return false;
     }
 
     // If it's a weekend shift, check constraints
