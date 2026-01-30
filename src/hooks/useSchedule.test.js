@@ -180,6 +180,39 @@ describe('useSchedule Hook', () => {
       expect(secondScheduleSize).toBe(firstScheduleSize);
     });
 
+    it('should produce different schedules on subsequent generations', async () => {
+      const { result } = renderHook(() => useSchedule(2026));
+
+      // Generate first schedule
+      act(() => {
+        result.current.generateSchedule();
+      });
+
+      // Get first Saturday's assignments
+      const firstSaturday = Object.keys(result.current.schedule).find(dateStr => {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return new Date(year, month - 1, day).getDay() === 6;
+      });
+      const firstScheduleAssignments = result.current.schedule[firstSaturday].shifts.map(s => s.member).sort().join(',');
+
+      // Generate multiple times to find a different schedule
+      let foundDifferent = false;
+      for (let i = 0; i < 10; i++) {
+        act(() => {
+          result.current.generateSchedule();
+        });
+
+        const newAssignments = result.current.schedule[firstSaturday].shifts.map(s => s.member).sort().join(',');
+        if (newAssignments !== firstScheduleAssignments) {
+          foundDifferent = true;
+          break;
+        }
+      }
+
+      // With proper randomization, we should get different results within 10 tries
+      expect(foundDifferent).toBe(true);
+    });
+
     it('should update stats after generating schedule', async () => {
       const { result } = renderHook(() => useSchedule(2026));
 

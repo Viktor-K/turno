@@ -1,6 +1,16 @@
 import { TEAM_MEMBERS, SHIFTS } from './constants';
 import { formatDate, getWeekStart, getDayOfWeek, addDays, getWeeksInYear } from './dateUtils';
 
+// Fisher-Yates shuffle for proper randomization
+const shuffleArray = (array) => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
 // Track statistics for fairness
 const createStats = () => {
   const stats = {};
@@ -69,7 +79,7 @@ const selectWeekendPair = (weekendHistory, stats) => {
 
     // Pick two from those with minimum weekends
     if (withMinWeekends.length >= 2) {
-      const shuffled = withMinWeekends.sort(() => Math.random() - 0.5);
+      const shuffled = shuffleArray(withMinWeekends);
       return [shuffled[0], shuffled[1]];
     }
 
@@ -78,7 +88,9 @@ const selectWeekendPair = (weekendHistory, stats) => {
   }
 
   // Among eligible members, prioritize those with fewer weekend shifts
-  const sortedEligible = eligibleMembers.sort((a, b) => {
+  // First shuffle to randomize members with equal priority
+  const shuffledEligible = shuffleArray(eligibleMembers);
+  const sortedEligible = shuffledEligible.sort((a, b) => {
     const aWeekends = weekendHistory.weekendsInCycle[a] || 0;
     const bWeekends = weekendHistory.weekendsInCycle[b] || 0;
     if (aWeekends !== bWeekends) return aWeekends - bWeekends;
