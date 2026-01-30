@@ -14,10 +14,37 @@ import EditDayModal from './components/EditDayModal';
 import ViolationModal from './components/ViolationModal';
 import RulesModal from './components/RulesModal';
 import TeamSidebar from './components/TeamSidebar';
+import LoginPage from './components/LoginPage';
 import { getScheduleStats } from './utils/shiftGenerator';
 import { downloadMonthPDF, downloadYearPDF } from './utils/pdfGenerator';
 
 function App() {
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Check authentication on mount
+  useEffect(() => {
+    const authData = sessionStorage.getItem('turno_auth');
+    if (authData) {
+      try {
+        const parsed = JSON.parse(authData);
+        // Check if auth is still valid (optional: add expiry check)
+        if (parsed.authenticated) {
+          setIsAuthenticated(true);
+        }
+      } catch (e) {
+        sessionStorage.removeItem('turno_auth');
+      }
+    }
+    setIsCheckingAuth(false);
+  }, []);
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('turno_auth');
+    setIsAuthenticated(false);
+  };
+
   const [currentView, setCurrentView] = useState(VIEW_MODES.MONTH);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isClosuresOpen, setIsClosuresOpen] = useState(false);
@@ -151,6 +178,20 @@ function App() {
     }
   };
 
+  // Show loading while checking auth
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
+
+  // Show login page if not authenticated
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={setIsAuthenticated} />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
@@ -167,6 +208,7 @@ function App() {
         onOpenRules={() => setIsRulesOpen(true)}
         onDownloadPDF={handleDownloadPDF}
         hasSchedule={Object.keys(schedule).length > 0}
+        onLogout={handleLogout}
       />
 
       {/* Main Content */}

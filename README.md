@@ -63,12 +63,48 @@ cd turno
 npm install
 ```
 
-3. Start the development server:
+3. Configure environment variables:
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your credentials:
+```
+VITE_ADMIN_USERNAME=your_username
+VITE_ADMIN_PASSWORD_HASH=your_sha256_hash
+```
+
+Generate a password hash:
+```bash
+echo -n "your_password" | shasum -a 256 | cut -d' ' -f1
+```
+
+4. Start the development server:
 ```bash
 npm run dev
 ```
 
-4. Open your browser at `http://localhost:5173`
+5. Open your browser at `http://localhost:5173`
+
+## Authentication
+
+The app requires authentication to access. Credentials are configured via environment variables:
+
+- `VITE_ADMIN_USERNAME` - The admin username
+- `VITE_ADMIN_PASSWORD_HASH` - SHA-256 hash of the password
+
+**Security Note:** This is a frontend-only authentication that protects against casual access. For production environments requiring higher security, consider using Vercel Password Protection (Pro plan) or a dedicated auth service like Auth0.
+
+## Deployment on Vercel
+
+1. Push your code to GitHub
+2. Go to [Vercel](https://vercel.com) and import your repository
+3. Add environment variables in Project Settings:
+   - `VITE_ADMIN_USERNAME`
+   - `VITE_ADMIN_PASSWORD_HASH`
+4. Deploy
+
+Vercel will automatically detect Vite and configure the build settings.
 
 ### Available Scripts
 
