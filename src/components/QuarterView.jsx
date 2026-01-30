@@ -48,19 +48,24 @@ const MiniMonth = ({ month, year, schedule, closures }) => {
               const isWeekend = date.getDay() === 0 || date.getDay() === 6;
               const hasShifts = daySchedule && daySchedule.shifts && daySchedule.shifts.length > 0;
 
+              const shiftsCount = hasShifts ? daySchedule.shifts.length : 0;
+
               return (
                 <div
                   key={dateKey}
-                  className={`aspect-square flex items-center justify-center text-[10px] rounded-sm ${
+                  className={`aspect-square flex flex-col items-center justify-center text-[10px] rounded-sm relative ${
                     !isCurrentMonth ? 'text-gray-300' :
                     isClosure ? 'bg-rose-50 text-rose-400' :
                     isToday ? 'bg-sky-100 text-sky-600 font-bold' :
                     hasShifts ? (isWeekend ? 'bg-gray-200' : 'bg-emerald-50') :
                     ''
                   }`}
-                  title={hasShifts ? `${daySchedule.shifts.length} turni` : ''}
+                  title={hasShifts ? `${shiftsCount} persone` : ''}
                 >
                   {isCurrentMonth ? date.getDate() : ''}
+                  {isCurrentMonth && hasShifts && (
+                    <span className="text-[7px] text-slate-500 leading-none">{shiftsCount}</span>
+                  )}
                 </div>
               );
             })}

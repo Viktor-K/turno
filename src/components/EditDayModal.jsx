@@ -188,7 +188,7 @@ const EditDayModal = ({ isOpen, onClose, date, daySchedule, schedule, onUpdateSc
                           {/* Remove button */}
                           <button
                             onClick={() => handleRemoveMember(member, shiftType.id)}
-                            className="p-1 hover:bg-red-100 rounded transition-colors opacity-0 group-hover:opacity-100"
+                            className="p-1 hover:bg-red-100 rounded transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
                             title="Rimuovi"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -213,7 +213,7 @@ const EditDayModal = ({ isOpen, onClose, date, daySchedule, schedule, onUpdateSc
                             <button
                               key={member}
                               onClick={() => handleAddMember(member, shiftType.id)}
-                              className={`px-2 py-1 text-xs rounded border ${MEMBER_COLORS[member]} hover:opacity-80 transition-opacity`}
+                              className={`px-2 py-1 text-xs rounded border ${MEMBER_COLORS[member]} hover:opacity-80 transition-opacity cursor-pointer`}
                             >
                               {member}
                             </button>
@@ -224,7 +224,7 @@ const EditDayModal = ({ isOpen, onClose, date, daySchedule, schedule, onUpdateSc
                         </div>
                         <button
                           onClick={() => setAddingToShift(null)}
-                          className="mt-2 text-xs text-slate-500 hover:text-slate-700"
+                          className="mt-2 text-xs text-slate-500 hover:text-slate-700 cursor-pointer"
                         >
                           Annulla
                         </button>
@@ -232,7 +232,7 @@ const EditDayModal = ({ isOpen, onClose, date, daySchedule, schedule, onUpdateSc
                     ) : canAddMore ? (
                       <button
                         onClick={() => setAddingToShift(shiftType.id)}
-                        className="w-full mt-2 px-3 py-2 border-2 border-dashed border-slate-200 rounded-lg text-sm text-slate-500 hover:border-slate-400 hover:text-slate-700 transition-colors flex items-center justify-center gap-2"
+                        className="w-full mt-2 px-3 py-2 border-2 border-dashed border-slate-200 rounded-lg text-sm text-slate-500 hover:border-slate-400 hover:text-slate-700 transition-colors flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -268,14 +268,14 @@ const EditDayModal = ({ isOpen, onClose, date, daySchedule, schedule, onUpdateSc
         <div className="px-6 py-4 bg-slate-50 border-t flex justify-between flex-shrink-0">
           <button
             onClick={handleCancel}
-            className="px-5 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors font-medium"
+            className="px-5 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors font-medium cursor-pointer"
           >
             {hasChanges ? 'Annulla modifiche' : 'Chiudi'}
           </button>
           {hasChanges && (
             <button
               onClick={handleSave}
-              className="px-5 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors font-medium"
+              className="px-5 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors font-medium cursor-pointer"
             >
               Salva modifiche
             </button>

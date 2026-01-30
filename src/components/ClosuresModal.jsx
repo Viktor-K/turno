@@ -73,7 +73,7 @@ const ClosuresModal = ({ isOpen, onClose, closures, addClosure, removeClosure, c
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+            className="p-2 hover:bg-white/20 rounded-lg transition-colors cursor-pointer"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -100,7 +100,7 @@ const ClosuresModal = ({ isOpen, onClose, closures, addClosure, removeClosure, c
               <button
                 onClick={handleAddClosure}
                 disabled={!selectedDate}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
                 Aggiungi
               </button>
@@ -115,13 +115,13 @@ const ClosuresModal = ({ isOpen, onClose, closures, addClosure, removeClosure, c
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={addAllHolidays}
-                className="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+                className="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors cursor-pointer"
               >
                 Aggiungi festività italiane
               </button>
               <button
                 onClick={clearClosures}
-                className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
+                className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
               >
                 Rimuovi tutte
               </button>
@@ -145,7 +145,7 @@ const ClosuresModal = ({ isOpen, onClose, closures, addClosure, removeClosure, c
                     </span>
                     <button
                       onClick={() => removeClosure(date)}
-                      className="p-1 hover:bg-red-200 rounded transition-colors"
+                      className="p-1 hover:bg-red-200 rounded transition-colors cursor-pointer"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -169,7 +169,7 @@ const ClosuresModal = ({ isOpen, onClose, closures, addClosure, removeClosure, c
         <div className="px-6 py-4 bg-gray-50 border-t flex justify-end">
           <button
             onClick={onClose}
-            className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+            className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium cursor-pointer"
           >
             Chiudi
           </button>

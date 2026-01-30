@@ -3,11 +3,12 @@ import { formatDate, getMonthStart, getMonthEnd, getDaysInRange, addDays } from 
 
 const DayCell = ({ date, daySchedule, isCurrentMonth, isClosure, isToday, onClick }) => {
   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+  const shiftsCount = daySchedule && daySchedule.shifts ? daySchedule.shifts.length : 0;
 
   return (
     <div
       onClick={() => onClick && onClick(date)}
-      className={`min-h-[80px] md:min-h-[100px] p-1 border-b border-r cursor-pointer transition-colors ${
+      className={`min-h-[80px] md:min-h-[100px] p-1 border-b border-r cursor-pointer transition-colors flex flex-col ${
         !isCurrentMonth ? 'bg-gray-50/50 text-gray-300' :
         isClosure ? 'bg-rose-50/50' :
         isWeekend ? 'bg-gray-100' : 'bg-white'
@@ -25,7 +26,7 @@ const DayCell = ({ date, daySchedule, isCurrentMonth, isClosure, isToday, onClic
         isClosure ? (
           <div className="text-xs text-rose-400 font-medium">Chiuso</div>
         ) : daySchedule && daySchedule.shifts ? (
-          <div className="space-y-0.5 overflow-hidden">
+          <div className="space-y-0.5 overflow-hidden flex-1">
             {daySchedule.shifts.slice(0, 4).map(({ member, shift }, idx) => (
               <div
                 key={idx}
@@ -39,7 +40,14 @@ const DayCell = ({ date, daySchedule, isCurrentMonth, isClosure, isToday, onClic
               <div className="text-[10px] text-gray-500">+{daySchedule.shifts.length - 4}</div>
             )}
           </div>
-        ) : null
+        ) : <div className="flex-1"></div>
+      )}
+
+      {/* People Count - bottom right */}
+      {isCurrentMonth && !isClosure && shiftsCount > 0 && (
+        <div className="text-[10px] text-slate-400 mt-auto text-right">
+          {shiftsCount} {shiftsCount === 1 ? 'persona' : 'persone'}
+        </div>
       )}
     </div>
   );

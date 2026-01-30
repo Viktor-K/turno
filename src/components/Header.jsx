@@ -1,6 +1,6 @@
 import { VIEW_MODES } from '../utils/constants';
 
-const Header = ({ currentView, setCurrentView, year, setYear, onGenerate, onOpenClosures, onDownloadPDF, hasSchedule }) => {
+const Header = ({ currentView, setCurrentView, year, setYear, onGenerate, onOpenClosures, onOpenRules, onDownloadPDF, hasSchedule }) => {
   return (
     <header className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4 py-4">
@@ -22,7 +22,7 @@ const Header = ({ currentView, setCurrentView, year, setYear, onGenerate, onOpen
           <div className="flex items-center gap-2">
             <button
               onClick={() => setYear(year - 1)}
-              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors cursor-pointer"
               aria-label="Anno precedente"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -32,7 +32,7 @@ const Header = ({ currentView, setCurrentView, year, setYear, onGenerate, onOpen
             <span className="text-lg font-semibold min-w-[4rem] text-center">{year}</span>
             <button
               onClick={() => setYear(year + 1)}
-              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors cursor-pointer"
               aria-label="Anno successivo"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -47,7 +47,7 @@ const Header = ({ currentView, setCurrentView, year, setYear, onGenerate, onOpen
               <button
                 key={key}
                 onClick={() => setCurrentView(value)}
-                className={`px-3 py-1.5 text-sm rounded-md transition-all ${
+                className={`px-3 py-1.5 text-sm rounded-md transition-all cursor-pointer ${
                   currentView === value
                     ? 'bg-white text-blue-700 shadow-md'
                     : 'hover:bg-white/20'
@@ -63,8 +63,18 @@ const Header = ({ currentView, setCurrentView, year, setYear, onGenerate, onOpen
           {/* Actions */}
           <div className="flex gap-2">
             <button
+              onClick={onOpenRules}
+              className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors flex items-center gap-2 text-sm cursor-pointer"
+              title="Regole di assegnazione"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span className="hidden sm:inline">Regole</span>
+            </button>
+            <button
               onClick={onOpenClosures}
-              className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors flex items-center gap-2 text-sm"
+              className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors flex items-center gap-2 text-sm cursor-pointer"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
@@ -74,7 +84,7 @@ const Header = ({ currentView, setCurrentView, year, setYear, onGenerate, onOpen
             {hasSchedule && (
               <button
                 onClick={onDownloadPDF}
-                className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors flex items-center gap-2 text-sm"
+                className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors flex items-center gap-2 text-sm cursor-pointer"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -84,7 +94,7 @@ const Header = ({ currentView, setCurrentView, year, setYear, onGenerate, onOpen
             )}
             <button
               onClick={onGenerate}
-              className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium shadow-md"
+              className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium shadow-md cursor-pointer"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

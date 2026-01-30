@@ -1,5 +1,17 @@
 import { TEAM_MEMBERS, MEMBER_COLORS } from '../utils/constants';
 
+// Avatar photo mapping
+const AVATAR_PHOTOS = {
+  'Gabriela': '/avatars/gabriela.jpg',
+  'Usfar': '/avatars/usfar.jpeg',
+  'Fabio': '/avatars/fabio.png',
+  'Elisa': '/avatars/elisa.jpeg',
+  'Marina': '/avatars/marina.jpeg',
+  'Stefania': '/avatars/stefania.jpg',
+  'Virginia': '/avatars/virginia.jpg',
+  'Silvia': '/avatars/silvia.jpg'
+};
+
 const getInitials = (name) => {
   return name.substring(0, 2).toUpperCase();
 };
@@ -27,12 +39,20 @@ const TeamSidebar = () => {
       <ul className="space-y-3">
         {TEAM_MEMBERS.map((member) => (
           <li key={member} className="flex items-center gap-3">
-            {/* Avatar */}
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm ${getAvatarColor(member)}`}
-            >
-              {getInitials(member)}
-            </div>
+            {/* Avatar with photo */}
+            {AVATAR_PHOTOS[member] ? (
+              <img
+                src={AVATAR_PHOTOS[member]}
+                alt={member}
+                className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
+              />
+            ) : (
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm ${getAvatarColor(member)}`}
+              >
+                {getInitials(member)}
+              </div>
+            )}
             {/* Name */}
             <span className="text-gray-700 font-medium">{member}</span>
           </li>

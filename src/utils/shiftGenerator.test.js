@@ -393,6 +393,320 @@ describe('Shift Generator', () => {
     });
   });
 
+  describe('Special Shifts Once Per Week Rule', () => {
+    it('should not assign the same person to early shift (8-17) more than once per week', () => {
+      const weeks = getWeeksInYear(testYear);
+
+      weeks.forEach(week => {
+        // Track early shift assignments for this week
+        const earlyAssignments = {};
+
+        for (let i = 0; i < 5; i++) { // Monday to Friday
+          const day = addDays(week.start, i);
+          const dayKey = formatDate(day);
+          const daySchedule = schedule[dayKey];
+
+          if (!daySchedule || daySchedule.closure) continue;
+
+          const earlyWorkers = daySchedule.shifts
+            .filter(s => s.shift.id === 'early')
+            .map(s => s.member);
+
+          earlyWorkers.forEach(worker => {
+            if (!earlyAssignments[worker]) {
+              earlyAssignments[worker] = [];
+            }
+            earlyAssignments[worker].push(dayKey);
+          });
+        }
+
+        // Each person should have at most 1 early shift per week
+        Object.entries(earlyAssignments).forEach(([member, dates]) => {
+          expect(dates.length).toBeLessThanOrEqual(1);
+        });
+      });
+    });
+
+    it('should not assign the same person to late shift (12-21) more than once per week', () => {
+      const weeks = getWeeksInYear(testYear);
+
+      weeks.forEach(week => {
+        // Track late shift assignments for this week
+        const lateAssignments = {};
+
+        for (let i = 0; i < 5; i++) { // Monday to Friday
+          const day = addDays(week.start, i);
+          const dayKey = formatDate(day);
+          const daySchedule = schedule[dayKey];
+
+          if (!daySchedule || daySchedule.closure) continue;
+
+          const lateWorkers = daySchedule.shifts
+            .filter(s => s.shift.id === 'late')
+            .map(s => s.member);
+
+          lateWorkers.forEach(worker => {
+            if (!lateAssignments[worker]) {
+              lateAssignments[worker] = [];
+            }
+            lateAssignments[worker].push(dayKey);
+          });
+        }
+
+        // Each person should have at most 1 late shift per week
+        Object.entries(lateAssignments).forEach(([member, dates]) => {
+          expect(dates.length).toBeLessThanOrEqual(1);
+        });
+      });
+    });
+
+    it('should allow a person to have both early (8-17) AND late (12-21) in the same week', () => {
+      // This verifies that early and late are tracked separately
+      // A person who worked early on Monday can still work late on Tuesday
+      const weeks = getWeeksInYear(testYear);
+      let foundBothInSameWeek = false;
+
+      weeks.forEach(week => {
+        const weekEarlyWorkers = new Set();
+        const weekLateWorkers = new Set();
+
+        for (let i = 0; i < 5; i++) {
+          const day = addDays(week.start, i);
+          const dayKey = formatDate(day);
+          const daySchedule = schedule[dayKey];
+
+          if (!daySchedule || daySchedule.closure) continue;
+
+          daySchedule.shifts.forEach(({ member, shift }) => {
+            if (shift.id === 'early') weekEarlyWorkers.add(member);
+            if (shift.id === 'late') weekLateWorkers.add(member);
+          });
+        }
+
+        // Check if any member worked both early and late this week
+        weekEarlyWorkers.forEach(member => {
+          if (weekLateWorkers.has(member)) {
+            foundBothInSameWeek = true;
+          }
+        });
+      });
+
+      // Over a full year, we expect at least some weeks where someone works both
+      // (This is allowed by the rules)
+      expect(foundBothInSameWeek).toBe(true);
+    });
+
+    it('should not assign special shifts to weekend workers', () => {
+      const weeks = getWeeksInYear(testYear);
+
+      weeks.forEach(week => {
+        const saturday = addDays(week.start, 5);
+        const satKey = formatDate(saturday);
+        const satSchedule = schedule[satKey];
+
+        if (!satSchedule || satSchedule.closure) return;
+
+        const weekendWorkers = new Set(
+          satSchedule.shifts
+            .filter(s => s.shift.id === 'weekend')
+            .map(s => s.member)
+        );
+
+        // Check that weekend workers don't have special shifts Mon-Fri
+        for (let i = 0; i < 5; i++) {
+          const day = addDays(week.start, i);
+          const dayKey = formatDate(day);
+          const daySchedule = schedule[dayKey];
+
+          if (!daySchedule || daySchedule.closure) continue;
+
+          const specialShiftWorkers = daySchedule.shifts
+            .filter(s => s.shift.id === 'early' || s.shift.id === 'late')
+            .map(s => s.member);
+
+          specialShiftWorkers.forEach(worker => {
+            expect(weekendWorkers.has(worker)).toBe(false);
+          });
+        }
+      });
+    });
+  });
+
+  describe('Early-Late Consecutive Rule', () => {
+    it('should assign early shift (8-17) on Friday to whoever had late on Monday', () => {
+      const weeks = getWeeksInYear(testYear);
+
+      weeks.forEach(week => {
+        const monday = addDays(week.start, 0);
+        const friday = addDays(week.start, 4);
+
+        const monKey = formatDate(monday);
+        const friKey = formatDate(friday);
+
+        const monSchedule = schedule[monKey];
+        const friSchedule = schedule[friKey];
+
+        if (!monSchedule || !friSchedule) return;
+        if (monSchedule.closure || friSchedule.closure) return;
+
+        const mondayLateWorker = monSchedule.shifts
+          .filter(s => s.shift.id === 'late')
+          .map(s => s.member)[0];
+
+        const fridayEarlyWorker = friSchedule.shifts
+          .filter(s => s.shift.id === 'early')
+          .map(s => s.member)[0];
+
+        // Monday late worker should be Friday early worker
+        if (mondayLateWorker && fridayEarlyWorker) {
+          expect(fridayEarlyWorker).toBe(mondayLateWorker);
+        }
+      });
+    });
+
+    it('should assign late shift to the person who had early the previous day (Wed-Fri)', () => {
+      const weeks = getWeeksInYear(testYear);
+
+      weeks.forEach(week => {
+        // Check Wednesday to Friday (these are days that have late from previous day early)
+        // Tuesday doesn't have this rule because Monday has late (not early)
+        for (let i = 2; i < 5; i++) { // Wednesday (2) to Friday (4)
+          const today = addDays(week.start, i);
+          const yesterday = addDays(week.start, i - 1);
+
+          const todayKey = formatDate(today);
+          const yesterdayKey = formatDate(yesterday);
+
+          const todaySchedule = schedule[todayKey];
+          const yesterdaySchedule = schedule[yesterdayKey];
+
+          if (!todaySchedule || !yesterdaySchedule) continue;
+          if (todaySchedule.closure || yesterdaySchedule.closure) continue;
+
+          const yesterdayEarlyWorker = yesterdaySchedule.shifts
+            .filter(s => s.shift.id === 'early')
+            .map(s => s.member)[0];
+
+          const todayLateWorker = todaySchedule.shifts
+            .filter(s => s.shift.id === 'late')
+            .map(s => s.member)[0];
+
+          // If there was an early worker yesterday, they should be the late worker today
+          if (yesterdayEarlyWorker) {
+            expect(todayLateWorker).toBe(yesterdayEarlyWorker);
+          }
+        }
+      });
+    });
+
+    it('should have early-late pairs on consecutive days (Tue-Wed, Wed-Thu, Thu-Fri)', () => {
+      const weeks = getWeeksInYear(testYear);
+      let consecutivePairsFound = 0;
+
+      weeks.forEach(week => {
+        // Check Tuesday to Thursday for early shifts (they get late next day)
+        for (let i = 1; i < 4; i++) { // Tuesday (1) to Thursday (3)
+          const earlyDay = addDays(week.start, i);
+          const lateDay = addDays(week.start, i + 1);
+
+          const earlyDayKey = formatDate(earlyDay);
+          const lateDayKey = formatDate(lateDay);
+
+          const earlyDaySchedule = schedule[earlyDayKey];
+          const lateDaySchedule = schedule[lateDayKey];
+
+          if (!earlyDaySchedule || !lateDaySchedule) continue;
+          if (earlyDaySchedule.closure || lateDaySchedule.closure) continue;
+
+          const earlyWorker = earlyDaySchedule.shifts
+            .filter(s => s.shift.id === 'early')
+            .map(s => s.member)[0];
+
+          const lateWorker = lateDaySchedule.shifts
+            .filter(s => s.shift.id === 'late')
+            .map(s => s.member)[0];
+
+          if (earlyWorker && lateWorker && earlyWorker === lateWorker) {
+            consecutivePairsFound++;
+          }
+        }
+      });
+
+      // Over a full year, we expect many consecutive early-late pairs
+      // 52 weeks * 3 pairs per week = up to 156 pairs
+      expect(consecutivePairsFound).toBeGreaterThan(100);
+    });
+
+    it('should have Monday late -> Friday early pairs', () => {
+      const weeks = getWeeksInYear(testYear);
+      let mondayFridayPairsFound = 0;
+
+      weeks.forEach(week => {
+        const monday = addDays(week.start, 0);
+        const friday = addDays(week.start, 4);
+
+        const monKey = formatDate(monday);
+        const friKey = formatDate(friday);
+
+        const monSchedule = schedule[monKey];
+        const friSchedule = schedule[friKey];
+
+        if (!monSchedule || !friSchedule) return;
+        if (monSchedule.closure || friSchedule.closure) return;
+
+        const mondayLateWorker = monSchedule.shifts
+          .filter(s => s.shift.id === 'late')
+          .map(s => s.member)[0];
+
+        const fridayEarlyWorker = friSchedule.shifts
+          .filter(s => s.shift.id === 'early')
+          .map(s => s.member)[0];
+
+        if (mondayLateWorker && fridayEarlyWorker && mondayLateWorker === fridayEarlyWorker) {
+          mondayFridayPairsFound++;
+        }
+      });
+
+      // Over a full year, we expect many Monday-Friday pairs
+      expect(mondayFridayPairsFound).toBeGreaterThan(40);
+    });
+
+    it('should never have late then early on consecutive days (Tue-Fri)', () => {
+      const weeks = getWeeksInYear(testYear);
+
+      weeks.forEach(week => {
+        // Check Tuesday to Thursday (late on these days should not lead to early next day)
+        for (let i = 1; i < 4; i++) {
+          const day1 = addDays(week.start, i);
+          const day2 = addDays(week.start, i + 1);
+
+          const day1Key = formatDate(day1);
+          const day2Key = formatDate(day2);
+
+          const day1Schedule = schedule[day1Key];
+          const day2Schedule = schedule[day2Key];
+
+          if (!day1Schedule || !day2Schedule) continue;
+          if (day1Schedule.closure || day2Schedule.closure) continue;
+
+          const day1LateWorker = day1Schedule.shifts
+            .filter(s => s.shift.id === 'late')
+            .map(s => s.member)[0];
+
+          const day2EarlyWorker = day2Schedule.shifts
+            .filter(s => s.shift.id === 'early')
+            .map(s => s.member)[0];
+
+          // If someone had late on day1, they should NOT have early on day2
+          // (the order must be early -> late, never late -> early for consecutive days)
+          if (day1LateWorker && day2EarlyWorker) {
+            expect(day1LateWorker).not.toBe(day2EarlyWorker);
+          }
+        }
+      });
+    });
+  });
+
   describe('Closure Days Handling', () => {
     it('should mark closure days correctly', () => {
       // Use weekdays that are definitely after the first Monday of 2025

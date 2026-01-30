@@ -42,12 +42,12 @@ const PersonChip = ({ member }) => {
   );
 };
 
-// Fixed heights for each shift type (single column layout, with generous padding)
+// Minimum heights for each shift type (can expand if more content)
 const SHIFT_HEIGHTS = {
-  early: 'h-[60px]',      // 1 person + padding
-  standard: 'h-[205px]',  // Multiple people (up to 6, stacked vertically) + padding
-  late: 'h-[60px]',       // 1 person + padding
-  weekend: 'h-[95px]'     // 2 people + padding
+  early: 'min-h-[60px]',      // 1 person + padding
+  standard: 'min-h-[180px]',  // Multiple people (up to 6, stacked vertically) + padding
+  late: 'min-h-[60px]',       // 1 person + padding
+  weekend: 'min-h-[95px]'     // 2 people + padding
 };
 
 const ShiftBlock = ({ shiftType, members, isEmpty }) => {
@@ -66,7 +66,7 @@ const ShiftBlock = ({ shiftType, members, isEmpty }) => {
       </div>
 
       {/* People chips - vertical stack, left aligned, vertically centered */}
-      <div className="px-1.5 py-2 flex-1 overflow-y-auto flex flex-col gap-1 items-start justify-center">
+      <div className="px-1.5 py-2 flex-1 flex flex-col gap-1 items-start justify-center">
         {members.length > 0 ? (
           members.map(member => (
             <PersonChip key={member} member={member} />
@@ -125,30 +125,38 @@ const DayColumn = ({ date, daySchedule, isWeekend, isClosure, onClick }) => {
       </div>
 
       {/* Shifts Content */}
-      <div className="p-2">
+      <div className="p-2 flex flex-col">
         {isClosure ? (
-          <div className="flex flex-col items-center justify-center h-full text-rose-400">
+          <div className="flex flex-col items-center justify-center min-h-[200px] text-rose-400">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
             </svg>
             <span className="text-sm font-medium">Chiuso</span>
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
-            {shiftsToShow.map(shiftType => {
-              const group = groupedShifts[shiftType.id];
-              const members = group?.members || [];
+          <>
+            <div className="flex flex-col gap-2 flex-1">
+              {shiftsToShow.map(shiftType => {
+                const group = groupedShifts[shiftType.id];
+                const members = group?.members || [];
 
-              return (
-                <ShiftBlock
-                  key={shiftType.id}
-                  shiftType={shiftType}
-                  members={members}
-                  isEmpty={members.length === 0}
-                />
-              );
-            })}
-          </div>
+                return (
+                  <ShiftBlock
+                    key={shiftType.id}
+                    shiftType={shiftType}
+                    members={members}
+                    isEmpty={members.length === 0}
+                  />
+                );
+              })}
+            </div>
+            {/* People Count - bottom right */}
+            {daySchedule && daySchedule.shifts && daySchedule.shifts.length > 0 && (
+              <div className="text-[10px] text-slate-400 text-right mt-2">
+                {daySchedule.shifts.length} {daySchedule.shifts.length === 1 ? 'persona' : 'persone'}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

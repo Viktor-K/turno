@@ -52,13 +52,13 @@ const ViolationModal = ({ isOpen, onClose, onConfirm, violations, actionDescript
         <div className="px-6 py-4 bg-slate-50 border-t flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-5 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors font-medium"
+            className="px-5 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors font-medium cursor-pointer"
           >
             Annulla
           </button>
           <button
             onClick={onConfirm}
-            className="px-5 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors font-medium"
+            className="px-5 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors font-medium cursor-pointer"
           >
             Conferma comunque
           </button>

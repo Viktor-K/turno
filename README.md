@@ -1,16 +1,132 @@
-# React + Vite
+# Turno
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern shift scheduling application for team management built with React and Tailwind CSS.
 
-Currently, two official plugins are available:
+## Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Turno is a Single Page Application (SPA) designed to help manage work shifts for a team of 8 members. It automatically generates fair and balanced schedules while respecting a comprehensive set of scheduling rules and constraints.
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Automatic Schedule Generation** - Generate yearly schedules with a single click
+- **Multiple View Modes** - Week, Month, Quarter, and Year views
+- **Smart Constraint System** - Enforces fairness rules for shift distribution
+- **Manual Editing** - Modify individual shifts with violation warnings
+- **Company Closures** - Mark holidays and closure days
+- **PDF Export** - Download schedules as PDF documents
+- **Statistics Dashboard** - Track shift distribution across team members
+- **Responsive Design** - Works on desktop and mobile devices
 
-## Expanding the ESLint configuration
+## Scheduling Rules
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Special Shifts (8:00-17:00 and 12:00-21:00)
+- Only one person per special shift type per day
+- Maximum one early shift (8-17) and one late shift (12-21) per person per week
+- Consecutive special shifts: Early shift (Tue-Thu) requires late shift the next day
+- Monday late shift requires Friday early shift for the same person
+
+### Weekend Shifts
+- Weekend shifts are assigned in pairs (same 2 people work Saturday and Sunday)
+- Weekend workers cannot work Thursday or Friday of the same week
+- Weekend workers cannot have special shifts during the same week
+- Fair rotation ensures everyone gets weekend duty before repeating
+
+### General Rules
+- No double assignments (one shift per person per day)
+- Equal distribution of all shift types across team members
+
+## Tech Stack
+
+- **React 19** - UI framework
+- **Vite 7** - Build tool and dev server
+- **Tailwind CSS 4** - Utility-first styling
+- **Vitest** - Testing framework
+- **jsPDF** - PDF generation
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- npm or yarn
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/YOUR_USERNAME/turno.git
+cd turno
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Start the development server:
+```bash
+npm run dev
+```
+
+4. Open your browser at `http://localhost:5173`
+
+### Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
+| `npm run preview` | Preview production build |
+| `npm run test` | Run tests in watch mode |
+| `npm run test:run` | Run tests once |
+| `npm run test:coverage` | Run tests with coverage report |
+| `npm run lint` | Run ESLint |
+
+## Project Structure
+
+```
+src/
+├── components/          # React components
+│   ├── Header.jsx       # App header with controls
+│   ├── WeekView.jsx     # Weekly calendar view
+│   ├── MonthView.jsx    # Monthly calendar view
+│   ├── QuarterView.jsx  # Quarterly calendar view
+│   ├── YearView.jsx     # Yearly calendar view
+│   ├── TeamSidebar.jsx  # Team members panel
+│   ├── DateNavigator.jsx # Date navigation controls
+│   ├── StatsPanel.jsx   # Statistics modal
+│   ├── RulesModal.jsx   # Scheduling rules modal
+│   ├── ClosuresModal.jsx # Company closures modal
+│   ├── EditDayModal.jsx # Day editing modal
+│   └── ...
+├── hooks/
+│   └── useSchedule.js   # Schedule state management
+├── utils/
+│   ├── shiftGenerator.js      # Schedule generation algorithm
+│   ├── constraintValidator.js # Constraint validation
+│   ├── dateUtils.js           # Date utilities
+│   ├── constants.js           # App constants
+│   └── pdfExport.js           # PDF export functionality
+├── App.jsx              # Main application component
+└── main.jsx             # Application entry point
+```
+
+## Testing
+
+The project includes comprehensive tests for the scheduling algorithm and constraint validation:
+
+```bash
+# Run all tests
+npm run test:run
+
+# Run tests with coverage
+npm run test:coverage
+```
+
+## License
+
+MIT
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.

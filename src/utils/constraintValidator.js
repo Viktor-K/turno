@@ -10,7 +10,11 @@ export const CONSTRAINT_TYPES = {
   DUPLICATE_ASSIGNMENT: 'duplicate_assignment',
   WEEKEND_FAIR_ROTATION: 'weekend_fair_rotation',
   EARLY_ONCE_PER_WEEK: 'early_once_per_week',
-  LATE_ONCE_PER_WEEK: 'late_once_per_week'
+  LATE_ONCE_PER_WEEK: 'late_once_per_week',
+  EARLY_LATE_CONSECUTIVE: 'early_late_consecutive',
+  LATE_REQUIRES_PREVIOUS_EARLY: 'late_requires_previous_early',
+  MONDAY_LATE_FRIDAY_EARLY: 'monday_late_friday_early',
+  FRIDAY_EARLY_REQUIRES_MONDAY_LATE: 'friday_early_requires_monday_late'
 };
 
 // Constraint messages
@@ -22,7 +26,11 @@ export const CONSTRAINT_MESSAGES = {
   [CONSTRAINT_TYPES.DUPLICATE_ASSIGNMENT]: 'La persona è già assegnata a un altro turno in questo giorno',
   [CONSTRAINT_TYPES.WEEKEND_FAIR_ROTATION]: 'Questa persona non può lavorare nel weekend finché tutti gli altri (eccetto il suo ultimo partner) non abbiano lavorato almeno un weekend',
   [CONSTRAINT_TYPES.EARLY_ONCE_PER_WEEK]: 'Questa persona ha già un turno 8:00-17:00 questa settimana',
-  [CONSTRAINT_TYPES.LATE_ONCE_PER_WEEK]: 'Questa persona ha già un turno 12:00-21:00 questa settimana'
+  [CONSTRAINT_TYPES.LATE_ONCE_PER_WEEK]: 'Questa persona ha già un turno 12:00-21:00 questa settimana',
+  [CONSTRAINT_TYPES.EARLY_LATE_CONSECUTIVE]: 'Chi ha il turno 8:00-17:00 deve avere il turno 12:00-21:00 il giorno successivo',
+  [CONSTRAINT_TYPES.LATE_REQUIRES_PREVIOUS_EARLY]: 'Il turno 12:00-21:00 dovrebbe essere assegnato a chi ha fatto 8:00-17:00 il giorno precedente',
+  [CONSTRAINT_TYPES.MONDAY_LATE_FRIDAY_EARLY]: 'Chi ha il turno 12:00-21:00 di lunedì deve avere il turno 8:00-17:00 il venerdì',
+  [CONSTRAINT_TYPES.FRIDAY_EARLY_REQUIRES_MONDAY_LATE]: 'Il turno 8:00-17:00 del venerdì dovrebbe essere assegnato a chi ha fatto 12:00-21:00 il lunedì'
 };
 
 // Analyze all weekend assignments to build history
@@ -202,6 +210,70 @@ const hasLateShiftInWeek = (schedule, weekStartDate, member, excludeDateStr = nu
   return false;
 };
 
+// Check if a person had early shift the previous day
+const hadEarlyShiftYesterday = (schedule, dateStr, member) => {
+  const date = new Date(dateStr);
+  const yesterday = addDays(date, -1);
+  const yesterdayKey = formatDate(yesterday);
+
+  if (schedule[yesterdayKey]?.shifts) {
+    return schedule[yesterdayKey].shifts.some(
+      s => s.member === member && s.shift.id === 'early'
+    );
+  }
+  return false;
+};
+
+// Check if a person has early shift today (to verify they should have late tomorrow)
+const hasEarlyShiftOnDay = (schedule, dateStr, member) => {
+  if (schedule[dateStr]?.shifts) {
+    return schedule[dateStr].shifts.some(
+      s => s.member === member && s.shift.id === 'early'
+    );
+  }
+  return false;
+};
+
+// Get who has early shift on a specific day
+const getEarlyWorkerOnDay = (schedule, dateStr) => {
+  if (schedule[dateStr]?.shifts) {
+    const earlyShift = schedule[dateStr].shifts.find(s => s.shift.id === 'early');
+    return earlyShift?.member || null;
+  }
+  return null;
+};
+
+// Get who has late shift on a specific day
+const getLateWorkerOnDay = (schedule, dateStr) => {
+  if (schedule[dateStr]?.shifts) {
+    const lateShift = schedule[dateStr].shifts.find(s => s.shift.id === 'late');
+    return lateShift?.member || null;
+  }
+  return null;
+};
+
+// Get Monday of the same week
+const getMondayOfWeek = (date) => {
+  const weekStart = getWeekStart(date);
+  return weekStart; // getWeekStart returns Monday
+};
+
+// Check if a person had late shift on Monday of this week
+const hadLateOnMonday = (schedule, dateStr, member) => {
+  const date = new Date(dateStr);
+  const monday = getMondayOfWeek(date);
+  const mondayKey = formatDate(monday);
+  return getLateWorkerOnDay(schedule, mondayKey) === member;
+};
+
+// Get who had late shift on Monday of the week containing dateStr
+const getMondayLateWorker = (schedule, dateStr) => {
+  const date = new Date(dateStr);
+  const monday = getMondayOfWeek(date);
+  const mondayKey = formatDate(monday);
+  return getLateWorkerOnDay(schedule, mondayKey);
+};
+
 // Validate a proposed change
 export const validateChange = (schedule, dateStr, member, newShiftId, currentAssignment = null) => {
   const violations = [];
@@ -244,6 +316,17 @@ export const validateChange = (schedule, dateStr, member, newShiftId, currentAss
         message: CONSTRAINT_MESSAGES[CONSTRAINT_TYPES.EARLY_ONCE_PER_WEEK]
       });
     }
+
+    // On Friday: early should be assigned to whoever had late on Monday
+    if (dayOfWeek === 5) {
+      const mondayLateWorker = getMondayLateWorker(schedule, dateStr);
+      if (mondayLateWorker && mondayLateWorker !== member) {
+        violations.push({
+          type: CONSTRAINT_TYPES.FRIDAY_EARLY_REQUIRES_MONDAY_LATE,
+          message: `${CONSTRAINT_MESSAGES[CONSTRAINT_TYPES.FRIDAY_EARLY_REQUIRES_MONDAY_LATE]} (${mondayLateWorker} ha fatto 12:00-21:00 lunedì)`
+        });
+      }
+    }
   }
 
   if (newShiftId === 'late') {
@@ -263,6 +346,18 @@ export const validateChange = (schedule, dateStr, member, newShiftId, currentAss
         type: CONSTRAINT_TYPES.LATE_ONCE_PER_WEEK,
         message: CONSTRAINT_MESSAGES[CONSTRAINT_TYPES.LATE_ONCE_PER_WEEK]
       });
+    }
+
+    // Check consecutive rule for Wed-Fri (yesterday's early worker should have late today)
+    // Tuesday doesn't have this check because Monday has late (not early)
+    if (dayOfWeek >= 3 && dayOfWeek <= 5) { // Wednesday (3), Thursday (4), Friday (5)
+      const yesterdayEarlyWorker = getEarlyWorkerOnDay(schedule, formatDate(addDays(date, -1)));
+      if (yesterdayEarlyWorker && yesterdayEarlyWorker !== member) {
+        violations.push({
+          type: CONSTRAINT_TYPES.LATE_REQUIRES_PREVIOUS_EARLY,
+          message: `${CONSTRAINT_MESSAGES[CONSTRAINT_TYPES.LATE_REQUIRES_PREVIOUS_EARLY]} (${yesterdayEarlyWorker} ha fatto 8:00-17:00 ieri)`
+        });
+      }
     }
   }
 
@@ -351,10 +446,25 @@ export const getAvailableMembers = (schedule, dateStr, shiftId, excludeMembers =
     // Special shift constraints: only one of each type per week
     if (shiftId === 'early') {
       if (hasEarlyShiftInWeek(schedule, weekStart, member, dateStr)) return false;
+      // On Friday: only the Monday late worker can have early
+      if (dayOfWeek === 5) {
+        const mondayLateWorker = getMondayLateWorker(schedule, dateStr);
+        if (mondayLateWorker && member !== mondayLateWorker) {
+          return false;
+        }
+      }
     }
 
     if (shiftId === 'late') {
       if (hasLateShiftInWeek(schedule, weekStart, member, dateStr)) return false;
+      // For late shift Wed-Fri: only the person who had early yesterday should be available
+      if (dayOfWeek >= 3 && dayOfWeek <= 5) { // Wednesday, Thursday, Friday
+        const yesterdayEarlyWorker = getEarlyWorkerOnDay(schedule, formatDate(addDays(date, -1)));
+        if (yesterdayEarlyWorker && member !== yesterdayEarlyWorker) {
+          return false;
+        }
+      }
+      // Note: Tuesday late has no consecutive restriction (Monday has late, not early)
     }
 
     // If it's a weekend shift, check constraints

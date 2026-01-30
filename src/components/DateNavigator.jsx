@@ -78,7 +78,7 @@ const DateNavigator = ({ currentDate, setCurrentDate, viewMode }) => {
     <div className="flex items-center justify-between bg-white rounded-lg shadow-sm p-3 mb-4">
       <button
         onClick={navigatePrev}
-        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+        className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
         aria-label="Precedente"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -90,7 +90,7 @@ const DateNavigator = ({ currentDate, setCurrentDate, viewMode }) => {
         <span className="font-semibold text-gray-700">{getDateLabel()}</span>
         <button
           onClick={goToToday}
-          className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+          className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors cursor-pointer"
         >
           Oggi
         </button>
@@ -98,7 +98,7 @@ const DateNavigator = ({ currentDate, setCurrentDate, viewMode }) => {
 
       <button
         onClick={navigateNext}
-        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+        className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
         aria-label="Successivo"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
