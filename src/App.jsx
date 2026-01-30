@@ -80,6 +80,8 @@ function App() {
   const {
     teamMembers,
     updateMember,
+    addMember,
+    deleteMember,
     getMemberColor
   } = useTeamMembers();
 
@@ -96,6 +98,16 @@ function App() {
     updateMember(memberId, updates);
   };
 
+  const handleAddMember = async (memberData) => {
+    await addMember(memberData);
+  };
+
+  const handleDeleteMember = async (memberId) => {
+    if (window.confirm('Sei sicuro di voler eliminare questo membro del team?')) {
+      await deleteMember(memberId);
+    }
+  };
+
   // Sync year with currentDate
   useEffect(() => {
     if (currentDate.getFullYear() !== year) {
@@ -107,8 +119,13 @@ function App() {
   const currentStats = Object.keys(schedule).length > 0 ? getScheduleStats(schedule) : {};
 
   const handleGenerate = () => {
-    if (window.confirm('Vuoi generare i turni per l\'intero anno? Questo sovrascriverà la pianificazione esistente.')) {
-      generateSchedule();
+    const currentMonth = currentDate.getMonth();
+    const monthNames = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+    const endMonth = (currentMonth + 2) % 12;
+    const message = `Vuoi generare i turni per 3 mesi (${monthNames[currentMonth]} - ${monthNames[endMonth]} ${year})?\n\nNota: I turni del weekend già assegnati verranno preservati.`;
+
+    if (window.confirm(message)) {
+      generateSchedule(currentMonth, teamMembers);
     }
   };
 
@@ -243,6 +260,8 @@ function App() {
             <TeamSidebar
               teamMembers={teamMembers}
               onMemberClick={handleMemberClick}
+              onAddMember={handleAddMember}
+              onDeleteMember={handleDeleteMember}
             />
           </div>
 
@@ -373,7 +392,7 @@ function App() {
       <footer className="bg-gray-800 text-gray-400 py-4 mt-8">
         <div className="max-w-7xl mx-auto px-4 text-center text-sm">
           <p>Turno - Gestione Turni Team</p>
-          <p className="text-xs mt-1">8 membri del team | Turni equi e bilanciati</p>
+          <p className="text-xs mt-1">{teamMembers.length} membri del team | Turni equi e bilanciati</p>
           {/* Debug: Schedule hash */}
           {generateScheduleHash(schedule) && (
             <p className="text-[10px] mt-3 text-gray-600 font-mono select-all" title="Schedule fingerprint (debug)">

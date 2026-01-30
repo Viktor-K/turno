@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { generateYearSchedule, getScheduleStats } from '../utils/shiftGenerator';
+import { generateYearSchedule, generateQuarterSchedule, getScheduleStats } from '../utils/shiftGenerator';
 import { formatDate } from '../utils/dateUtils';
 import { scheduleApi, closuresApi } from '../services/api';
 
@@ -88,13 +88,29 @@ export const useSchedule = (initialYear = new Date().getFullYear()) => {
     }
   }, [year, useApi]);
 
-  // Generate new schedule
-  const generateSchedule = useCallback(async () => {
+  // Generate new schedule for 3 months, preserving existing weekend allocations
+  const generateSchedule = useCallback(async (startMonth = null, teamMembersList = null) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const { schedule: newSchedule, stats: newStats } = generateYearSchedule(year, closures);
+      // Use provided startMonth or default to current month
+      const currentMonth = startMonth !== null ? startMonth : new Date().getMonth();
+
+      // Extract team member names from the list if provided
+      const teamMemberNames = teamMembersList
+        ? teamMembersList.map(m => m.firstName)
+        : null;
+
+      // Generate 3 months of schedule, preserving existing weekend allocations
+      const { schedule: newSchedule, stats: newStats } = generateQuarterSchedule(
+        year,
+        currentMonth,
+        schedule, // Pass existing schedule to preserve weekends
+        closures,
+        teamMemberNames
+      );
+
       setSchedule(newSchedule);
       setStats(newStats);
 
@@ -115,7 +131,7 @@ export const useSchedule = (initialYear = new Date().getFullYear()) => {
     }
 
     setIsLoading(false);
-  }, [year, closures, useApi]);
+  }, [year, closures, schedule, useApi]);
 
   // Add closure
   const addClosure = useCallback(async (date) => {

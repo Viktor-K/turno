@@ -104,6 +104,49 @@ export const useTeamMembers = () => {
     }
   }, [useApi]);
 
+  // Add a new team member
+  const addMember = useCallback(async (memberData) => {
+    // Generate a unique ID from the first name
+    const id = memberData.firstName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+
+    const newMember = {
+      id,
+      firstName: memberData.firstName,
+      lastName: memberData.lastName || '',
+      email: memberData.email || '',
+      color: memberData.color || 'bg-gray-100 text-gray-700 border-gray-200'
+    };
+
+    // Update local state
+    setTeamMembers(prev => [...prev, newMember]);
+
+    // Save to API if available
+    if (useApi) {
+      try {
+        await teamMembersApi.create(newMember);
+      } catch (err) {
+        console.warn('Failed to add team member in API:', err);
+      }
+    }
+
+    return newMember;
+  }, [useApi]);
+
+  // Delete a team member
+  const deleteMember = useCallback(async (memberId) => {
+    // Update local state first (optimistic update)
+    setTeamMembers(prev => prev.filter(member => member.id !== memberId));
+
+    // Delete from API if available
+    if (useApi) {
+      try {
+        await teamMembersApi.delete(memberId);
+      } catch (err) {
+        console.warn('Failed to delete team member from API:', err);
+      }
+    }
+  }, [useApi]);
+
   // Get member by name (for backward compatibility with schedule data)
   const getMemberByName = useCallback((name) => {
     return teamMembers.find(m => m.firstName === name);
@@ -142,6 +185,8 @@ export const useTeamMembers = () => {
     teamMembers,
     isLoading,
     updateMember,
+    addMember,
+    deleteMember,
     getMemberByName,
     getMemberColor,
     resetToDefaults

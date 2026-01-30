@@ -1,5 +1,5 @@
-import { TEAM_MEMBERS, SHIFTS } from './constants';
-import { formatDate, getWeekStart, getDayOfWeek, addDays, getWeeksInYear } from './dateUtils';
+import { SHIFTS } from './constants';
+import { formatDate, getWeekStart, getDayOfWeek, addDays, getWeeksInYear, isWeekend } from './dateUtils';
 
 // Fisher-Yates shuffle for proper randomization
 const shuffleArray = (array) => {
@@ -12,9 +12,9 @@ const shuffleArray = (array) => {
 };
 
 // Track statistics for fairness
-const createStats = () => {
+const createStats = (teamMembers) => {
   const stats = {};
-  TEAM_MEMBERS.forEach(member => {
+  teamMembers.forEach(member => {
     stats[member] = {
       earlyShifts: 0,
       lateShifts: 0,
@@ -43,7 +43,7 @@ const createWeekendHistory = () => {
 
 // Check if a member can work a weekend based on fair rotation rule
 // Rule: A person cannot work another weekend until all others (except their last partner) have worked
-const canWorkWeekend = (member, weekendHistory) => {
+const canWorkWeekend = (member, weekendHistory, teamMembers) => {
   const memberWeekends = weekendHistory.weekendsInCycle[member] || 0;
 
   // If member hasn't worked a weekend in this cycle, they can work
@@ -53,7 +53,7 @@ const canWorkWeekend = (member, weekendHistory) => {
 
   // If member has worked, check if all others (except partner) have also worked
   const lastPartner = weekendHistory.lastPartner[member];
-  const othersToCheck = TEAM_MEMBERS.filter(m => m !== member && m !== lastPartner);
+  const othersToCheck = teamMembers.filter(m => m !== member && m !== lastPartner);
 
   const allOthersWorked = othersToCheck.every(m =>
     (weekendHistory.weekendsInCycle[m] || 0) >= memberWeekends
@@ -63,13 +63,13 @@ const canWorkWeekend = (member, weekendHistory) => {
 };
 
 // Select the best weekend pair based on fair rotation
-const selectWeekendPair = (weekendHistory, stats) => {
+const selectWeekendPair = (weekendHistory, stats, teamMembers) => {
   // Get eligible members who can work this weekend
-  const eligibleMembers = TEAM_MEMBERS.filter(m => canWorkWeekend(m, weekendHistory));
+  const eligibleMembers = teamMembers.filter(m => canWorkWeekend(m, weekendHistory, teamMembers));
 
   if (eligibleMembers.length < 2) {
     // Start a new cycle - reset and pick from those with lowest weekend count
-    const sortedByWeekends = [...TEAM_MEMBERS].sort((a, b) =>
+    const sortedByWeekends = [...teamMembers].sort((a, b) =>
       (weekendHistory.weekendsInCycle[a] || 0) - (weekendHistory.weekendsInCycle[b] || 0)
     );
     const minWeekends = weekendHistory.weekendsInCycle[sortedByWeekends[0]] || 0;
@@ -122,7 +122,7 @@ const selectWeekendPair = (weekendHistory, stats) => {
 };
 
 // Update weekend history after assigning a weekend
-const updateWeekendHistory = (weekendHistory, pair) => {
+const updateWeekendHistory = (weekendHistory, pair, teamMembers) => {
   const [member1, member2] = pair;
 
   // Update partners
@@ -134,7 +134,7 @@ const updateWeekendHistory = (weekendHistory, pair) => {
   weekendHistory.weekendsInCycle[member2] = (weekendHistory.weekendsInCycle[member2] || 0) + 1;
 
   // Check if we need to start a new cycle (everyone has worked at least once)
-  const minWeekends = Math.min(...TEAM_MEMBERS.map(m => weekendHistory.weekendsInCycle[m] || 0));
+  const minWeekends = Math.min(...teamMembers.map(m => weekendHistory.weekendsInCycle[m] || 0));
   if (minWeekends > 0) {
     // Everyone has worked - we can optionally reset counts but keep partners
     // For simplicity, we increment cycle but keep counts for continued fairness
@@ -143,8 +143,8 @@ const updateWeekendHistory = (weekendHistory, pair) => {
 };
 
 // Get members with lowest count of a specific shift type
-const getMembersWithLowestCount = (stats, shiftType, excludeMembers = []) => {
-  const available = TEAM_MEMBERS.filter(m => !excludeMembers.includes(m));
+const getMembersWithLowestCount = (stats, shiftType, excludeMembers = [], teamMembers) => {
+  const available = teamMembers.filter(m => !excludeMembers.includes(m));
   if (available.length === 0) return [];
 
   const counts = available.map(m => ({
@@ -157,22 +157,22 @@ const getMembersWithLowestCount = (stats, shiftType, excludeMembers = []) => {
 };
 
 // Select member for special shift with fairness consideration
-const selectMemberForSpecialShift = (stats, shiftType, excludeMembers, currentWeek, priorityMembers = []) => {
-  const available = TEAM_MEMBERS.filter(m => !excludeMembers.includes(m));
+const selectMemberForSpecialShift = (stats, shiftType, excludeMembers, currentWeek, priorityMembers = [], teamMembers) => {
+  const available = teamMembers.filter(m => !excludeMembers.includes(m));
   if (available.length === 0) return null;
 
   // First priority: members who skipped special shifts last week
   const prioritized = available.filter(m => priorityMembers.includes(m));
   if (prioritized.length > 0) {
     const withLowest = getMembersWithLowestCount(stats, shiftType,
-      TEAM_MEMBERS.filter(m => !prioritized.includes(m)));
+      teamMembers.filter(m => !prioritized.includes(m)), teamMembers);
     if (withLowest.length > 0) {
       return withLowest[Math.floor(Math.random() * withLowest.length)];
     }
   }
 
   // Second priority: members with lowest count
-  const withLowest = getMembersWithLowestCount(stats, shiftType, excludeMembers);
+  const withLowest = getMembersWithLowestCount(stats, shiftType, excludeMembers, teamMembers);
   if (withLowest.length > 0) {
     return withLowest[Math.floor(Math.random() * withLowest.length)];
   }
@@ -180,10 +180,16 @@ const selectMemberForSpecialShift = (stats, shiftType, excludeMembers, currentWe
   return available[Math.floor(Math.random() * available.length)];
 };
 
+// Default team members for backward compatibility
+const DEFAULT_TEAM_MEMBERS = [
+  'Gabriela', 'Usfar', 'Fabio', 'Elisa', 'Marina', 'Stefania', 'Virginia', 'Silvia'
+];
+
 // Main schedule generator
-export const generateYearSchedule = (year, closures = []) => {
+export const generateYearSchedule = (year, closures = [], teamMembersList = null) => {
+  const teamMembers = teamMembersList || DEFAULT_TEAM_MEMBERS;
   const schedule = {};
-  const stats = createStats();
+  const stats = createStats(teamMembers);
   const weeks = getWeeksInYear(year);
   const weekendHistory = createWeekendHistory();
 
@@ -196,12 +202,12 @@ export const generateYearSchedule = (year, closures = []) => {
     const weekKey = formatDate(weekStart);
 
     // Select weekend pair using fair rotation algorithm
-    const weekendPair = selectWeekendPair(weekendHistory, stats);
-    updateWeekendHistory(weekendHistory, weekendPair);
+    const weekendPair = selectWeekendPair(weekendHistory, stats, teamMembers);
+    updateWeekendHistory(weekendHistory, weekendPair, teamMembers);
 
     // Members working weekend cannot work Thu/Fri and cannot have early/late shifts all week
     const weekendWorkers = weekendPair;
-    const availableForThursFri = TEAM_MEMBERS.filter(m => !weekendWorkers.includes(m));
+    const availableForThursFri = teamMembers.filter(m => !weekendWorkers.includes(m));
 
     // Track who gets each type of special shift this week (separately)
     // Rule: A person can only work ONE early shift per week, and ONE late shift per week
@@ -257,7 +263,7 @@ export const generateYearSchedule = (year, closures = []) => {
 
       // Thursday and Friday restrictions
       const isThursOrFri = dayOfWeek === 4 || dayOfWeek === 5;
-      const availableToday = isThursOrFri ? availableForThursFri : TEAM_MEMBERS;
+      const availableToday = isThursOrFri ? availableForThursFri : teamMembers;
 
       const isMonday = dayOfWeek === 1;
       const isFriday = dayOfWeek === 5;
@@ -294,7 +300,8 @@ export const generateYearSchedule = (year, closures = []) => {
           'earlyShifts',
           [...weekendWorkers, ...assignedToday, ...weekEarlyWorkers],
           weekIndex,
-          priorityForEarly
+          priorityForEarly,
+          teamMembers
         );
 
         if (earlyMember && availableToday.includes(earlyMember)) {
@@ -321,7 +328,8 @@ export const generateYearSchedule = (year, closures = []) => {
           'lateShifts',
           [...weekendWorkers, ...assignedToday, ...weekLateWorkers],
           weekIndex,
-          priorityForLate
+          priorityForLate,
+          teamMembers
         );
 
         if (mondayLateMember && availableToday.includes(mondayLateMember)) {
@@ -351,11 +359,248 @@ export const generateYearSchedule = (year, closures = []) => {
 
     // Calculate priority for next week
     // Members who didn't get a specific special shift this week get priority for that shift next week
-    priorityForEarly = TEAM_MEMBERS.filter(m =>
+    priorityForEarly = teamMembers.filter(m =>
       !weekendWorkers.includes(m) &&
       !weekEarlyWorkers.has(m)
     );
-    priorityForLate = TEAM_MEMBERS.filter(m =>
+    priorityForLate = teamMembers.filter(m =>
+      !weekendWorkers.includes(m) &&
+      !weekLateWorkers.has(m)
+    );
+  });
+
+  return { schedule, stats };
+};
+
+// Generate schedule for 3 months, preserving existing weekend allocations
+export const generateQuarterSchedule = (year, startMonth, existingSchedule = {}, closures = [], teamMembersList = null) => {
+  const teamMembers = teamMembersList || DEFAULT_TEAM_MEMBERS;
+  const schedule = { ...existingSchedule };
+  const stats = createStats(teamMembers);
+  const weekendHistory = createWeekendHistory();
+
+  // Calculate the date range for 3 months
+  const startDate = new Date(year, startMonth, 1);
+  const endDate = new Date(year, startMonth + 3, 0); // Last day of the 3rd month
+
+  // Get all weeks that fall within this 3-month period
+  const allWeeks = getWeeksInYear(year);
+  const relevantWeeks = allWeeks.filter(week => {
+    const weekEnd = week.end;
+    const weekStart = week.start;
+    return weekEnd >= startDate && weekStart <= endDate;
+  });
+
+  // Track who had priority for special shifts
+  let priorityForEarly = [];
+  let priorityForLate = [];
+
+  // Helper to check if a date has existing weekend allocation
+  const hasExistingWeekendAllocation = (dateKey) => {
+    const existing = existingSchedule[dateKey];
+    if (!existing || existing.closure) return false;
+    // Check if it's a weekend day with shifts assigned
+    const date = new Date(dateKey);
+    const dayOfWeek = date.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) return false;
+    return existing.shifts && existing.shifts.length > 0;
+  };
+
+  // Get existing weekend members for a week
+  const getExistingWeekendPair = (weekStart) => {
+    const saturdayDate = addDays(weekStart, 5); // Saturday
+    const sundayDate = addDays(weekStart, 6);   // Sunday
+    const satKey = formatDate(saturdayDate);
+    const sunKey = formatDate(sundayDate);
+
+    // Check Saturday first
+    if (hasExistingWeekendAllocation(satKey)) {
+      const satSchedule = existingSchedule[satKey];
+      return satSchedule.shifts.map(s => s.member);
+    }
+    // Then check Sunday
+    if (hasExistingWeekendAllocation(sunKey)) {
+      const sunSchedule = existingSchedule[sunKey];
+      return sunSchedule.shifts.map(s => s.member);
+    }
+    return null;
+  };
+
+  relevantWeeks.forEach((week, weekIndex) => {
+    const weekStart = week.start;
+
+    // Check if this week has existing weekend allocations
+    const existingWeekendPair = getExistingWeekendPair(weekStart);
+
+    // Use existing weekend pair or generate new one
+    let weekendPair;
+    if (existingWeekendPair && existingWeekendPair.length >= 2) {
+      weekendPair = existingWeekendPair.slice(0, 2);
+      // Update weekend history with existing pair
+      updateWeekendHistory(weekendHistory, weekendPair, teamMembers);
+    } else {
+      weekendPair = selectWeekendPair(weekendHistory, stats, teamMembers);
+      updateWeekendHistory(weekendHistory, weekendPair, teamMembers);
+    }
+
+    // Members working weekend cannot work Thu/Fri and cannot have early/late shifts all week
+    const weekendWorkers = weekendPair;
+    const availableForThursFri = teamMembers.filter(m => !weekendWorkers.includes(m));
+
+    const weekEarlyWorkers = new Set();
+    const weekLateWorkers = new Set();
+
+    let nextDayLateMember = null;
+    let fridayEarlyMember = null;
+
+    // Generate schedule for each day of the week
+    for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+      const currentDate = addDays(weekStart, dayOffset);
+      const dateKey = formatDate(currentDate);
+      const dayOfWeek = getDayOfWeek(currentDate);
+
+      // Skip if date is outside our 3-month range
+      if (currentDate < startDate || currentDate > endDate) {
+        continue;
+      }
+
+      // Check if this is a closure day
+      const isClosureDay = closures.some(c => formatDate(c) === dateKey);
+      if (isClosureDay) {
+        schedule[dateKey] = { closure: true, shifts: [] };
+        nextDayLateMember = null;
+        continue;
+      }
+
+      // Weekend days (Saturday = 6, Sunday = 0) - preserve existing or use weekendPair
+      if (dayOfWeek === 6 || dayOfWeek === 0) {
+        // If there's an existing weekend allocation, preserve it
+        if (hasExistingWeekendAllocation(dateKey)) {
+          // Keep the existing schedule
+          // Update stats from existing
+          existingSchedule[dateKey].shifts.forEach(s => {
+            if (stats[s.member]) {
+              stats[s.member].weekendShifts++;
+              stats[s.member].lastWeekendWeek = weekIndex;
+            }
+          });
+        } else {
+          // Generate new weekend allocation
+          schedule[dateKey] = {
+            closure: false,
+            shifts: weekendPair.map(member => ({
+              member,
+              shift: SHIFTS.WEEKEND
+            }))
+          };
+
+          weekendPair.forEach(member => {
+            stats[member].weekendShifts++;
+            stats[member].lastWeekendWeek = weekIndex;
+          });
+        }
+        nextDayLateMember = null;
+        continue;
+      }
+
+      // Weekday schedule
+      const dayShifts = [];
+      const assignedToday = new Set();
+
+      const isThursOrFri = dayOfWeek === 4 || dayOfWeek === 5;
+      const availableToday = isThursOrFri ? availableForThursFri : teamMembers;
+
+      const isMonday = dayOfWeek === 1;
+      const isFriday = dayOfWeek === 5;
+
+      // Assign LATE shift FIRST if someone was pre-assigned from yesterday's early
+      let lateMember = null;
+      if (nextDayLateMember && availableToday.includes(nextDayLateMember)) {
+        lateMember = nextDayLateMember;
+        dayShifts.push({ member: lateMember, shift: SHIFTS.LATE });
+        assignedToday.add(lateMember);
+        stats[lateMember].lateShifts++;
+        stats[lateMember].lastLateWeek = weekIndex;
+        weekLateWorkers.add(lateMember);
+      }
+      nextDayLateMember = null;
+
+      // Assign EARLY shift
+      let earlyMember = null;
+
+      if (isFriday && fridayEarlyMember && availableToday.includes(fridayEarlyMember)) {
+        earlyMember = fridayEarlyMember;
+        dayShifts.push({ member: earlyMember, shift: SHIFTS.EARLY });
+        assignedToday.add(earlyMember);
+        stats[earlyMember].earlyShifts++;
+        stats[earlyMember].lastEarlyWeek = weekIndex;
+        weekEarlyWorkers.add(earlyMember);
+      } else if (!isFriday) {
+        earlyMember = selectMemberForSpecialShift(
+          stats,
+          'earlyShifts',
+          [...weekendWorkers, ...assignedToday, ...weekEarlyWorkers],
+          weekIndex,
+          priorityForEarly,
+          teamMembers
+        );
+
+        if (earlyMember && availableToday.includes(earlyMember)) {
+          dayShifts.push({ member: earlyMember, shift: SHIFTS.EARLY });
+          assignedToday.add(earlyMember);
+          stats[earlyMember].earlyShifts++;
+          stats[earlyMember].lastEarlyWeek = weekIndex;
+          weekEarlyWorkers.add(earlyMember);
+
+          const tomorrowDayOfWeek = getDayOfWeek(addDays(currentDate, 1));
+          if (tomorrowDayOfWeek !== 6 && tomorrowDayOfWeek !== 0) {
+            nextDayLateMember = earlyMember;
+            weekLateWorkers.add(earlyMember);
+          }
+        }
+      }
+
+      // On Monday, also assign late shift and track for Friday early
+      if (isMonday && !lateMember) {
+        const mondayLateMember = selectMemberForSpecialShift(
+          stats,
+          'lateShifts',
+          [...weekendWorkers, ...assignedToday, ...weekLateWorkers],
+          weekIndex,
+          priorityForLate,
+          teamMembers
+        );
+
+        if (mondayLateMember && availableToday.includes(mondayLateMember)) {
+          dayShifts.push({ member: mondayLateMember, shift: SHIFTS.LATE });
+          assignedToday.add(mondayLateMember);
+          stats[mondayLateMember].lateShifts++;
+          stats[mondayLateMember].lastLateWeek = weekIndex;
+          weekLateWorkers.add(mondayLateMember);
+          fridayEarlyMember = mondayLateMember;
+          weekEarlyWorkers.add(mondayLateMember);
+        }
+      }
+
+      // Assign STANDARD shifts - remaining members
+      const remainingMembers = availableToday.filter(m => !assignedToday.has(m));
+      remainingMembers.forEach(member => {
+        dayShifts.push({ member, shift: SHIFTS.STANDARD });
+        stats[member].standardShifts++;
+      });
+
+      schedule[dateKey] = {
+        closure: false,
+        shifts: dayShifts
+      };
+    }
+
+    // Calculate priority for next week
+    priorityForEarly = teamMembers.filter(m =>
+      !weekendWorkers.includes(m) &&
+      !weekEarlyWorkers.has(m)
+    );
+    priorityForLate = teamMembers.filter(m =>
       !weekendWorkers.includes(m) &&
       !weekLateWorkers.has(m)
     );
@@ -365,29 +610,30 @@ export const generateYearSchedule = (year, closures = []) => {
 };
 
 // Regenerate schedule for a specific period
-export const regenerateSchedule = (existingSchedule, startDate, endDate, closures = []) => {
+export const regenerateSchedule = (existingSchedule, startDate, endDate, closures = [], teamMembersList = null) => {
   // This function can be used to regenerate a portion of the schedule
   // while trying to maintain consistency with the rest
   const year = new Date(startDate).getFullYear();
-  return generateYearSchedule(year, closures);
+  return generateYearSchedule(year, closures, teamMembersList);
 };
 
 // Get schedule statistics
 export const getScheduleStats = (schedule) => {
   const stats = {};
-  TEAM_MEMBERS.forEach(member => {
-    stats[member] = {
-      earlyShifts: 0,
-      lateShifts: 0,
-      standardShifts: 0,
-      weekendShifts: 0,
-      totalDays: 0
-    };
-  });
 
+  // Dynamically build stats from schedule data
   Object.values(schedule).forEach(day => {
     if (day.closure) return;
     day.shifts.forEach(({ member, shift }) => {
+      if (!stats[member]) {
+        stats[member] = {
+          earlyShifts: 0,
+          lateShifts: 0,
+          standardShifts: 0,
+          weekendShifts: 0,
+          totalDays: 0
+        };
+      }
       stats[member].totalDays++;
       switch (shift.id) {
         case 'early':
