@@ -116,7 +116,7 @@ const DayColumn = ({ date, daySchedule, isWeekend, isClosure, onClick }) => {
       </div>
 
       {/* Shifts Content */}
-      <div className="p-2 h-[280px]">
+      <div className="p-2 h-[360px]">
         {isClosure ? (
           <div className="flex flex-col items-center justify-center h-full text-rose-400">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
