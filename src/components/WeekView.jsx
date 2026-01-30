@@ -42,14 +42,14 @@ const PersonChip = ({ member }) => {
   );
 };
 
-const ShiftBlock = ({ shiftType, members }) => {
+const ShiftBlock = ({ shiftType, members, isEmpty }) => {
   const accentColor = SHIFT_ACCENTS[shiftType.id] || 'border-l-gray-400';
   const icon = SHIFT_ICONS[shiftType.id];
 
   return (
-    <div className={`bg-white border border-gray-200 rounded-lg overflow-hidden mb-2 last:mb-0 border-l-4 ${accentColor} shadow-sm`}>
+    <div className={`flex-1 flex flex-col bg-white border border-gray-200 rounded-lg overflow-hidden border-l-4 ${accentColor} shadow-sm ${isEmpty ? 'opacity-40' : ''}`}>
       {/* Shift header */}
-      <div className="px-2 py-1.5 bg-gray-50 border-b border-gray-100">
+      <div className="px-2 py-1.5 bg-gray-50 border-b border-gray-100 flex-shrink-0">
         <div className="flex items-center gap-1.5 text-gray-600">
           {icon}
           <span className="text-[11px] font-semibold">{shiftType.name}</span>
@@ -57,10 +57,14 @@ const ShiftBlock = ({ shiftType, members }) => {
       </div>
 
       {/* People chips */}
-      <div className="p-2 flex flex-wrap gap-1">
-        {members.map(member => (
-          <PersonChip key={member} member={member} />
-        ))}
+      <div className="p-2 flex flex-wrap gap-1 content-start flex-1">
+        {members.length > 0 ? (
+          members.map(member => (
+            <PersonChip key={member} member={member} />
+          ))
+        ) : (
+          <span className="text-[10px] text-gray-400 italic">Nessuno</span>
+        )}
       </div>
     </div>
   );
@@ -112,35 +116,29 @@ const DayColumn = ({ date, daySchedule, isWeekend, isClosure, onClick }) => {
       </div>
 
       {/* Shifts Content */}
-      <div className="p-2 min-h-[220px]">
+      <div className="p-2 h-[280px]">
         {isClosure ? (
-          <div className="flex flex-col items-center justify-center h-full text-rose-400 py-8">
+          <div className="flex flex-col items-center justify-center h-full text-rose-400">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
             </svg>
             <span className="text-sm font-medium">Chiuso</span>
           </div>
-        ) : daySchedule && daySchedule.shifts && daySchedule.shifts.length > 0 ? (
-          <div className="space-y-2">
+        ) : (
+          <div className="flex flex-col gap-2 h-full">
             {shiftsToShow.map(shiftType => {
               const group = groupedShifts[shiftType.id];
-              if (!group || group.members.length === 0) return null;
+              const members = group?.members || [];
 
               return (
                 <ShiftBlock
                   key={shiftType.id}
                   shiftType={shiftType}
-                  members={group.members}
+                  members={members}
+                  isEmpty={members.length === 0}
                 />
               );
             })}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-gray-300 py-8">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span className="text-xs">Nessun turno</span>
           </div>
         )}
       </div>
