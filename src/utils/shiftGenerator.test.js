@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { generateYearSchedule, getScheduleStats } from './shiftGenerator';
+import { generateYearSchedule, generateQuarterSchedule, getScheduleStats } from './shiftGenerator';
 import { TEAM_MEMBERS, SHIFTS } from './constants';
 import { formatDate, getWeekStart, addDays, getWeeksInYear } from './dateUtils';
 
@@ -783,5 +783,270 @@ describe('Schedule Stats Calculation', () => {
 
     const stats = getScheduleStats(testSchedule);
     expect(stats['Gabriela'].totalDays).toBe(1);
+  });
+});
+
+describe('Quarter Schedule Generation (3 months)', () => {
+  const testYear = 2025;
+
+  describe('Basic Quarter Generation', () => {
+    it('should generate schedule for exactly 3 months', () => {
+      const startMonth = 0; // January
+      const result = generateQuarterSchedule(testYear, startMonth, {}, []);
+
+      const scheduledDates = Object.keys(result.schedule);
+
+      // All dates should be within the 3-month range
+      scheduledDates.forEach(dateStr => {
+        const [year, month] = dateStr.split('-').map(Number);
+        expect(year).toBe(testYear);
+        // Allow for weeks that span month boundaries
+        expect(month).toBeGreaterThanOrEqual(1); // January
+        expect(month).toBeLessThanOrEqual(4); // March (can include some April due to weeks)
+      });
+
+      // Should have roughly 90 days (3 months)
+      expect(scheduledDates.length).toBeGreaterThanOrEqual(80);
+      expect(scheduledDates.length).toBeLessThanOrEqual(100);
+    });
+
+    it('should generate shifts for each day in the quarter', () => {
+      const startMonth = 3; // April
+      const result = generateQuarterSchedule(testYear, startMonth, {}, []);
+
+      Object.entries(result.schedule).forEach(([dateStr, day]) => {
+        if (!day.closure) {
+          expect(day.shifts.length).toBeGreaterThan(0);
+        }
+      });
+    });
+
+    it('should apply all existing shift rules to quarter schedule', () => {
+      const startMonth = 6; // July
+      const result = generateQuarterSchedule(testYear, startMonth, {}, []);
+
+      // Verify weekday shifts don't have weekend type
+      Object.entries(result.schedule).forEach(([dateStr, day]) => {
+        if (day.closure) return;
+
+        const [year, month, dayNum] = dateStr.split('-').map(Number);
+        const date = new Date(year, month - 1, dayNum);
+        const dayOfWeek = date.getDay();
+
+        const hasWeekendShifts = day.shifts.some(s => s.shift.id === 'weekend');
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+        if (!isWeekend && day.shifts.length > 0) {
+          expect(hasWeekendShifts).toBe(false);
+        }
+      });
+    });
+  });
+
+  describe('Weekend Preservation', () => {
+    it('should preserve existing weekend allocations', () => {
+      const existingSchedule = {
+        '2025-01-11': {
+          closure: false,
+          shifts: [
+            { member: 'Marina', shift: SHIFTS.WEEKEND },
+            { member: 'Stefania', shift: SHIFTS.WEEKEND }
+          ]
+        },
+        '2025-01-12': {
+          closure: false,
+          shifts: [
+            { member: 'Marina', shift: SHIFTS.WEEKEND },
+            { member: 'Stefania', shift: SHIFTS.WEEKEND }
+          ]
+        }
+      };
+
+      const result = generateQuarterSchedule(testYear, 0, existingSchedule, []);
+
+      // The existing weekend allocation should be preserved
+      const saturdaySchedule = result.schedule['2025-01-11'];
+      const sundaySchedule = result.schedule['2025-01-12'];
+
+      expect(saturdaySchedule).toBeDefined();
+      expect(sundaySchedule).toBeDefined();
+
+      const saturdayWorkers = saturdaySchedule.shifts.map(s => s.member).sort();
+      const sundayWorkers = sundaySchedule.shifts.map(s => s.member).sort();
+
+      expect(saturdayWorkers).toEqual(['Marina', 'Stefania']);
+      expect(sundayWorkers).toEqual(['Marina', 'Stefania']);
+    });
+
+    it('should generate new weekend allocations when none exist', () => {
+      const result = generateQuarterSchedule(testYear, 0, {}, []);
+
+      // Find first Saturday in January 2025 (January 4)
+      const firstSaturday = '2025-01-04';
+      const firstSunday = '2025-01-05';
+
+      const satSchedule = result.schedule[firstSaturday];
+      const sunSchedule = result.schedule[firstSunday];
+
+      if (satSchedule && !satSchedule.closure) {
+        const satWorkers = satSchedule.shifts.filter(s => s.shift.id === 'weekend');
+        expect(satWorkers.length).toBe(2);
+      }
+    });
+
+    it('should respect Thu/Fri restrictions based on preserved weekend workers', () => {
+      // Pre-assign Marina and Stefania to weekend
+      const existingSchedule = {
+        '2025-01-11': {
+          closure: false,
+          shifts: [
+            { member: 'Marina', shift: SHIFTS.WEEKEND },
+            { member: 'Stefania', shift: SHIFTS.WEEKEND }
+          ]
+        },
+        '2025-01-12': {
+          closure: false,
+          shifts: [
+            { member: 'Marina', shift: SHIFTS.WEEKEND },
+            { member: 'Stefania', shift: SHIFTS.WEEKEND }
+          ]
+        }
+      };
+
+      const result = generateQuarterSchedule(testYear, 0, existingSchedule, []);
+
+      // Thursday Jan 9 and Friday Jan 10 should NOT have Marina or Stefania
+      const thursday = result.schedule['2025-01-09'];
+      const friday = result.schedule['2025-01-10'];
+
+      if (thursday && !thursday.closure) {
+        const thursdayWorkers = thursday.shifts.map(s => s.member);
+        expect(thursdayWorkers).not.toContain('Marina');
+        expect(thursdayWorkers).not.toContain('Stefania');
+      }
+
+      if (friday && !friday.closure) {
+        const fridayWorkers = friday.shifts.map(s => s.member);
+        expect(fridayWorkers).not.toContain('Marina');
+        expect(fridayWorkers).not.toContain('Stefania');
+      }
+    });
+
+    it('should not give early/late shifts to preserved weekend workers', () => {
+      const existingSchedule = {
+        '2025-01-11': {
+          closure: false,
+          shifts: [
+            { member: 'Virginia', shift: SHIFTS.WEEKEND },
+            { member: 'Silvia', shift: SHIFTS.WEEKEND }
+          ]
+        },
+        '2025-01-12': {
+          closure: false,
+          shifts: [
+            { member: 'Virginia', shift: SHIFTS.WEEKEND },
+            { member: 'Silvia', shift: SHIFTS.WEEKEND }
+          ]
+        }
+      };
+
+      const result = generateQuarterSchedule(testYear, 0, existingSchedule, []);
+
+      // Check weekdays of that week (Mon-Wed, Thu-Fri already excluded)
+      ['2025-01-06', '2025-01-07', '2025-01-08'].forEach(dateStr => {
+        const day = result.schedule[dateStr];
+        if (!day || day.closure) return;
+
+        const earlyWorkers = day.shifts.filter(s => s.shift.id === 'early').map(s => s.member);
+        const lateWorkers = day.shifts.filter(s => s.shift.id === 'late').map(s => s.member);
+
+        expect(earlyWorkers).not.toContain('Virginia');
+        expect(earlyWorkers).not.toContain('Silvia');
+        expect(lateWorkers).not.toContain('Virginia');
+        expect(lateWorkers).not.toContain('Silvia');
+      });
+    });
+  });
+});
+
+describe('Dynamic Team Members', () => {
+  it('should generate schedule with custom team members list', () => {
+    const customTeam = ['Alice', 'Bob', 'Charlie', 'Diana'];
+    const result = generateYearSchedule(2025, [], customTeam);
+
+    // All shifts should only include custom team members
+    Object.values(result.schedule).forEach(day => {
+      if (day.closure) return;
+      day.shifts.forEach(shift => {
+        expect(customTeam).toContain(shift.member);
+      });
+    });
+
+    // Stats should only have custom team members
+    Object.keys(result.stats).forEach(member => {
+      expect(customTeam).toContain(member);
+    });
+  });
+
+  it('should generate quarter schedule with custom team members', () => {
+    const customTeam = ['John', 'Jane', 'Jack', 'Jill', 'Joe', 'Jenny'];
+    const result = generateQuarterSchedule(2025, 0, {}, [], customTeam);
+
+    Object.values(result.schedule).forEach(day => {
+      if (day.closure) return;
+      day.shifts.forEach(shift => {
+        expect(customTeam).toContain(shift.member);
+      });
+    });
+  });
+
+  it('should work with larger team', () => {
+    const largeTeam = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+    const result = generateYearSchedule(2025, [], largeTeam);
+
+    expect(Object.keys(result.schedule).length).toBeGreaterThan(300);
+
+    // All team members should be included
+    largeTeam.forEach(member => {
+      expect(result.stats[member]).toBeDefined();
+    });
+  });
+
+  it('should work with smaller team (4 members minimum for weekend pairs)', () => {
+    const smallTeam = ['One', 'Two', 'Three', 'Four'];
+    const result = generateYearSchedule(2025, [], smallTeam);
+
+    expect(Object.keys(result.schedule).length).toBeGreaterThan(300);
+
+    // Weekend shifts should still have 2 people
+    Object.entries(result.schedule).forEach(([dateStr, day]) => {
+      if (day.closure) return;
+
+      const [year, month, dayNum] = dateStr.split('-').map(Number);
+      const date = new Date(year, month - 1, dayNum);
+
+      if (date.getDay() === 0 || date.getDay() === 6) {
+        const weekendShifts = day.shifts.filter(s => s.shift.id === 'weekend');
+        if (weekendShifts.length > 0) {
+          expect(weekendShifts.length).toBe(2);
+        }
+      }
+    });
+  });
+
+  it('should use default team members when null is passed', () => {
+    const result = generateYearSchedule(2025, [], null);
+
+    // Should have shifts from default team
+    const foundMembers = new Set();
+    Object.values(result.schedule).forEach(day => {
+      if (day.closure) return;
+      day.shifts.forEach(shift => {
+        foundMembers.add(shift.member);
+      });
+    });
+
+    // Should include at least some default members
+    expect(foundMembers.has('Gabriela') || foundMembers.has('Fabio')).toBe(true);
   });
 });
