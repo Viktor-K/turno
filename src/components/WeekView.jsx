@@ -42,22 +42,32 @@ const PersonChip = ({ member }) => {
   );
 };
 
+// Fixed heights for each shift type
+const SHIFT_HEIGHTS = {
+  early: 'h-[60px]',      // 1 person
+  standard: 'h-[140px]',  // Multiple people (up to 6)
+  late: 'h-[60px]',       // 1 person
+  weekend: 'h-[80px]'     // 2 people
+};
+
 const ShiftBlock = ({ shiftType, members, isEmpty }) => {
   const accentColor = SHIFT_ACCENTS[shiftType.id] || 'border-l-gray-400';
   const icon = SHIFT_ICONS[shiftType.id];
+  const heightClass = SHIFT_HEIGHTS[shiftType.id] || 'h-[80px]';
+  const isStandard = shiftType.id === 'standard';
 
   return (
-    <div className={`flex-1 flex flex-col bg-white border border-gray-200 rounded-lg overflow-hidden border-l-4 ${accentColor} shadow-sm ${isEmpty ? 'opacity-40' : ''}`}>
+    <div className={`flex flex-col bg-white border border-gray-200 rounded-lg overflow-hidden border-l-4 ${accentColor} shadow-sm ${heightClass} ${isEmpty ? 'opacity-40' : ''}`}>
       {/* Shift header */}
-      <div className="px-2 py-1.5 bg-gray-50 border-b border-gray-100 flex-shrink-0">
+      <div className="px-2 py-1 bg-gray-50 border-b border-gray-100 flex-shrink-0">
         <div className="flex items-center gap-1.5 text-gray-600">
           {icon}
           <span className="text-[11px] font-semibold">{shiftType.name}</span>
         </div>
       </div>
 
-      {/* People chips */}
-      <div className="p-2 flex flex-wrap gap-1 content-start flex-1">
+      {/* People chips - use grid for standard shift */}
+      <div className={`p-1.5 flex-1 overflow-hidden ${isStandard ? 'grid grid-cols-2 gap-1 content-start' : 'flex flex-wrap gap-1 content-start'}`}>
         {members.length > 0 ? (
           members.map(member => (
             <PersonChip key={member} member={member} />
@@ -116,7 +126,7 @@ const DayColumn = ({ date, daySchedule, isWeekend, isClosure, onClick }) => {
       </div>
 
       {/* Shifts Content */}
-      <div className="p-2 h-[360px]">
+      <div className="p-2">
         {isClosure ? (
           <div className="flex flex-col items-center justify-center h-full text-rose-400">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -125,7 +135,7 @@ const DayColumn = ({ date, daySchedule, isWeekend, isClosure, onClick }) => {
             <span className="text-sm font-medium">Chiuso</span>
           </div>
         ) : (
-          <div className="flex flex-col gap-2 h-full">
+          <div className="flex flex-col gap-2">
             {shiftsToShow.map(shiftType => {
               const group = groupedShifts[shiftType.id];
               const members = group?.members || [];
