@@ -3,7 +3,7 @@ import { query, execute, transaction } from '../lib/db.js';
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
@@ -180,6 +180,38 @@ export default async function handler(req, res) {
         success: true,
         daysProcessed: daysToInsert.length,
         shiftsProcessed: shiftsToInsert.length
+      });
+    }
+
+    if (req.method === 'DELETE') {
+      // Delete all schedule entries for a specific month
+      const { year, month } = req.query;
+
+      if (!year || month === undefined) {
+        return res.status(400).json({ error: 'year and month query parameters are required' });
+      }
+
+      const yearNum = parseInt(year);
+      const monthNum = parseInt(month);
+
+      if (isNaN(yearNum) || isNaN(monthNum) || monthNum < 0 || monthNum > 11) {
+        return res.status(400).json({ error: 'Invalid year or month' });
+      }
+
+      // Calculate the date range for the month
+      const startDate = `${yearNum}-${String(monthNum + 1).padStart(2, '0')}-01`;
+      const lastDay = new Date(yearNum, monthNum + 1, 0).getDate();
+      const endDate = `${yearNum}-${String(monthNum + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+      // Delete all schedule_days (and cascade to shift_assignments) for the month
+      const deleteResult = await execute(
+        `DELETE FROM schedule_days WHERE date >= $1::date AND date <= $2::date RETURNING id`,
+        [startDate, endDate]
+      );
+
+      return res.status(200).json({
+        success: true,
+        deletedDays: deleteResult.rowCount || 0
       });
     }
 

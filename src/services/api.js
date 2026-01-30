@@ -66,6 +66,10 @@ export const scheduleApi = {
   deleteDay: (date) => fetchApi(`/schedule/${date}`, {
     method: 'DELETE',
   }),
+
+  deleteMonth: (year, month) => fetchApi(`/schedule?year=${year}&month=${month}`, {
+    method: 'DELETE',
+  }),
 };
 
 // Closures API

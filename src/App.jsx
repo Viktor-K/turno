@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { VIEW_MODES } from './utils/constants';
+import { VIEW_MODES, MONTHS } from './utils/constants';
 import { formatDate, generateScheduleHash } from './utils/dateUtils';
 import { useSchedule } from './hooks/useSchedule';
 import { useTeamMembers } from './hooks/useTeamMembers';
@@ -17,6 +17,7 @@ import RulesModal from './components/RulesModal';
 import TeamSidebar from './components/TeamSidebar';
 import TeamMemberModal from './components/TeamMemberModal';
 import LoginPage from './components/LoginPage';
+import DeleteConfirmModal from './components/DeleteConfirmModal';
 import { getScheduleStats } from './utils/shiftGenerator';
 import { downloadMonthPDF, downloadYearPDF } from './utils/pdfGenerator';
 
@@ -73,8 +74,13 @@ function App() {
     clearClosures,
     getScheduleForDate,
     isClosure,
-    updateDaySchedule
+    updateDaySchedule,
+    clearMonthSchedule
   } = useSchedule(currentDate.getFullYear());
+
+  // Delete month confirmation modal state
+  const [isDeleteMonthModalOpen, setIsDeleteMonthModalOpen] = useState(false);
+  const [monthToDelete, setMonthToDelete] = useState(null);
 
   // Team members management
   const {
@@ -146,6 +152,36 @@ function App() {
     } else {
       downloadYearPDF(year, schedule, closures);
     }
+  };
+
+  // Handle delete month request
+  const handleDeleteMonthRequest = () => {
+    setMonthToDelete(currentDate.getMonth());
+    setIsDeleteMonthModalOpen(true);
+  };
+
+  // Confirm delete month
+  const handleConfirmDeleteMonth = async () => {
+    if (monthToDelete !== null) {
+      await clearMonthSchedule(monthToDelete);
+    }
+    setIsDeleteMonthModalOpen(false);
+    setMonthToDelete(null);
+  };
+
+  // Cancel delete month
+  const handleCancelDeleteMonth = () => {
+    setIsDeleteMonthModalOpen(false);
+    setMonthToDelete(null);
+  };
+
+  // Get schedule count for current month
+  const getCurrentMonthScheduleCount = () => {
+    const monthStr = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const yearStr = String(year);
+    return Object.keys(schedule).filter(dateStr =>
+      dateStr.startsWith(`${yearStr}-${monthStr}`)
+    ).length;
   };
 
   // Handle violation detection from EditDayModal
@@ -280,15 +316,30 @@ function App() {
                   {closures.length} chiusure
                 </span>
               </div>
-              <button
-                onClick={() => setIsStatsOpen(true)}
-                className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors text-sm font-medium flex items-center gap-2 cursor-pointer"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                Statistiche
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Delete month button - only show in month view when there's data */}
+                {currentView === VIEW_MODES.MONTH && getCurrentMonthScheduleCount() > 0 && (
+                  <button
+                    onClick={handleDeleteMonthRequest}
+                    className="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium flex items-center gap-2 cursor-pointer border border-red-200"
+                    title={`Elimina turni di ${MONTHS[currentDate.getMonth()]}`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span className="hidden sm:inline">Elimina mese</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setIsStatsOpen(true)}
+                  className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors text-sm font-medium flex items-center gap-2 cursor-pointer"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  Statistiche
+                </button>
+              </div>
             </div>
 
             {/* Date Navigator */}
@@ -386,6 +437,15 @@ function App() {
         onClose={() => setIsMemberModalOpen(false)}
         member={selectedMember}
         onUpdate={handleMemberUpdate}
+      />
+
+      <DeleteConfirmModal
+        isOpen={isDeleteMonthModalOpen}
+        onClose={handleCancelDeleteMonth}
+        onConfirm={handleConfirmDeleteMonth}
+        title="Elimina turni del mese"
+        message="Stai per eliminare tutti i turni e le assegnazioni per:"
+        itemDescription={monthToDelete !== null ? `${MONTHS[monthToDelete]} ${year} (${getCurrentMonthScheduleCount()} giorni)` : ''}
       />
 
       {/* Footer */}

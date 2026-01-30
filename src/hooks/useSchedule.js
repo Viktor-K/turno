@@ -237,6 +237,40 @@ export const useSchedule = (initialYear = new Date().getFullYear()) => {
     }
   }, [schedule, year, useApi]);
 
+  // Clear all schedule for a specific month
+  const clearMonthSchedule = useCallback(async (monthIndex) => {
+    // Get all dates in the specified month
+    const targetYear = year;
+    const daysInMonth = new Date(targetYear, monthIndex + 1, 0).getDate();
+
+    // Create new schedule without the dates from the target month
+    const newSchedule = { ...schedule };
+    const datesToDelete = [];
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${targetYear}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      if (newSchedule[dateStr]) {
+        delete newSchedule[dateStr];
+        datesToDelete.push(dateStr);
+      }
+    }
+
+    setSchedule(newSchedule);
+    setStats(getScheduleStats(newSchedule));
+    localStorage.setItem(`${STORAGE_KEY}-${year}`, JSON.stringify(newSchedule));
+
+    // Delete from API if available
+    if (useApi && datesToDelete.length > 0) {
+      try {
+        await scheduleApi.deleteMonth(targetYear, monthIndex);
+      } catch (err) {
+        console.warn('Failed to delete month from API:', err);
+      }
+    }
+
+    return datesToDelete.length;
+  }, [schedule, year, useApi]);
+
   return {
     year,
     schedule,
@@ -251,6 +285,7 @@ export const useSchedule = (initialYear = new Date().getFullYear()) => {
     clearClosures,
     getScheduleForDate,
     isClosure,
-    updateDaySchedule
+    updateDaySchedule,
+    clearMonthSchedule
   };
 };
