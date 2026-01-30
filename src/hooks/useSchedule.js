@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { generateYearSchedule, getScheduleStats } from '../utils/shiftGenerator';
 import { formatDate } from '../utils/dateUtils';
+import { scheduleApi, closuresApi } from '../services/api';
 
 const STORAGE_KEY = 'turno-schedule';
 const CLOSURES_KEY = 'turno-closures';
@@ -11,78 +12,174 @@ export const useSchedule = (initialYear = new Date().getFullYear()) => {
   const [closures, setClosures] = useState([]);
   const [stats, setStats] = useState({});
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [useApi, setUseApi] = useState(true);
 
-  // Load from localStorage
+  // Load from API with localStorage fallback
   useEffect(() => {
-    const savedSchedule = localStorage.getItem(`${STORAGE_KEY}-${year}`);
-    const savedClosures = localStorage.getItem(`${CLOSURES_KEY}-${year}`);
+    const loadData = async () => {
+      setIsLoading(true);
+      setError(null);
 
-    if (savedSchedule) {
-      const parsed = JSON.parse(savedSchedule);
-      setSchedule(parsed);
-      setStats(getScheduleStats(parsed));
+      // Try API first
+      if (useApi) {
+        try {
+          const [scheduleRes, closuresRes] = await Promise.all([
+            scheduleApi.getByYear(year),
+            closuresApi.getByYear(year)
+          ]);
+
+          const loadedSchedule = scheduleRes.schedule || {};
+          const loadedClosures = closuresRes.closures || [];
+
+          setSchedule(loadedSchedule);
+          setClosures(loadedClosures);
+          setStats(getScheduleStats(loadedSchedule));
+
+          // Update localStorage cache
+          if (Object.keys(loadedSchedule).length > 0) {
+            localStorage.setItem(`${STORAGE_KEY}-${year}`, JSON.stringify(loadedSchedule));
+          }
+          localStorage.setItem(`${CLOSURES_KEY}-${year}`, JSON.stringify(loadedClosures));
+
+          setIsLoading(false);
+          return;
+        } catch (err) {
+          console.warn('API unavailable, falling back to localStorage:', err);
+          setUseApi(false);
+        }
+      }
+
+      // Fallback to localStorage
+      const savedSchedule = localStorage.getItem(`${STORAGE_KEY}-${year}`);
+      const savedClosures = localStorage.getItem(`${CLOSURES_KEY}-${year}`);
+
+      if (savedSchedule) {
+        const parsed = JSON.parse(savedSchedule);
+        setSchedule(parsed);
+        setStats(getScheduleStats(parsed));
+      } else {
+        setSchedule({});
+        setStats({});
+      }
+
+      if (savedClosures) {
+        setClosures(JSON.parse(savedClosures));
+      } else {
+        setClosures([]);
+      }
+
+      setIsLoading(false);
+    };
+
+    loadData();
+  }, [year, useApi]);
+
+  // Save schedule to localStorage (and API if available)
+  const saveScheduleToStorage = useCallback(async (newSchedule) => {
+    localStorage.setItem(`${STORAGE_KEY}-${year}`, JSON.stringify(newSchedule));
+
+    if (useApi) {
+      try {
+        await scheduleApi.saveYear(year, newSchedule);
+      } catch (err) {
+        console.warn('Failed to save to API:', err);
+      }
     }
-
-    if (savedClosures) {
-      setClosures(JSON.parse(savedClosures));
-    }
-
-    setIsLoading(false);
-  }, [year]);
-
-  // Save to localStorage
-  useEffect(() => {
-    if (Object.keys(schedule).length > 0) {
-      localStorage.setItem(`${STORAGE_KEY}-${year}`, JSON.stringify(schedule));
-    }
-  }, [schedule, year]);
-
-  useEffect(() => {
-    if (closures.length >= 0) {
-      localStorage.setItem(`${CLOSURES_KEY}-${year}`, JSON.stringify(closures));
-    }
-  }, [closures, year]);
+  }, [year, useApi]);
 
   // Generate new schedule
-  const generateSchedule = useCallback(() => {
+  const generateSchedule = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
+
     try {
       const { schedule: newSchedule, stats: newStats } = generateYearSchedule(year, closures);
       setSchedule(newSchedule);
       setStats(newStats);
+
+      // Save to localStorage
+      localStorage.setItem(`${STORAGE_KEY}-${year}`, JSON.stringify(newSchedule));
+
+      // Save to API if available
+      if (useApi) {
+        try {
+          await scheduleApi.saveYear(year, newSchedule);
+        } catch (err) {
+          console.warn('Failed to save to API:', err);
+        }
+      }
     } catch (error) {
       console.error('Error generating schedule:', error);
+      setError(error.message);
     }
+
     setIsLoading(false);
-  }, [year, closures]);
+  }, [year, closures, useApi]);
 
   // Add closure
-  const addClosure = useCallback((date) => {
+  const addClosure = useCallback(async (date) => {
     const dateStr = typeof date === 'string' ? date : formatDate(date);
-    if (!closures.includes(dateStr)) {
-      const newClosures = [...closures, dateStr].sort();
-      setClosures(newClosures);
+    if (closures.includes(dateStr)) return;
 
-      // Update schedule if exists
-      if (schedule[dateStr]) {
-        setSchedule(prev => ({
-          ...prev,
-          [dateStr]: { closure: true, shifts: [] }
-        }));
+    const newClosures = [...closures, dateStr].sort();
+    setClosures(newClosures);
+    localStorage.setItem(`${CLOSURES_KEY}-${year}`, JSON.stringify(newClosures));
+
+    // Update schedule if exists
+    if (schedule[dateStr]) {
+      const newSchedule = {
+        ...schedule,
+        [dateStr]: { closure: true, shifts: [] }
+      };
+      setSchedule(newSchedule);
+      localStorage.setItem(`${STORAGE_KEY}-${year}`, JSON.stringify(newSchedule));
+    }
+
+    // Save to API if available
+    if (useApi) {
+      try {
+        await closuresApi.add(dateStr);
+        if (schedule[dateStr]) {
+          await scheduleApi.updateDay(dateStr, { closure: true, shifts: [] });
+        }
+      } catch (err) {
+        console.warn('Failed to save closure to API:', err);
       }
     }
-  }, [closures, schedule]);
+  }, [closures, schedule, year, useApi]);
 
   // Remove closure
-  const removeClosure = useCallback((date) => {
+  const removeClosure = useCallback(async (date) => {
     const dateStr = typeof date === 'string' ? date : formatDate(date);
-    setClosures(prev => prev.filter(d => d !== dateStr));
-  }, []);
+    const newClosures = closures.filter(d => d !== dateStr);
+    setClosures(newClosures);
+    localStorage.setItem(`${CLOSURES_KEY}-${year}`, JSON.stringify(newClosures));
+
+    // Save to API if available
+    if (useApi) {
+      try {
+        await closuresApi.remove(dateStr);
+      } catch (err) {
+        console.warn('Failed to remove closure from API:', err);
+      }
+    }
+  }, [closures, year, useApi]);
 
   // Clear all closures
-  const clearClosures = useCallback(() => {
+  const clearClosures = useCallback(async () => {
     setClosures([]);
-  }, []);
+    localStorage.setItem(`${CLOSURES_KEY}-${year}`, JSON.stringify([]));
+
+    // Save to API if available
+    if (useApi) {
+      try {
+        await closuresApi.clearYear(year);
+      } catch (err) {
+        console.warn('Failed to clear closures from API:', err);
+      }
+    }
+  }, [year, useApi]);
 
   // Change year
   const changeYear = useCallback((newYear) => {
@@ -90,6 +187,7 @@ export const useSchedule = (initialYear = new Date().getFullYear()) => {
     setSchedule({});
     setClosures([]);
     setStats({});
+    setUseApi(true); // Reset to try API again for new year
   }, []);
 
   // Get schedule for a specific date
@@ -105,12 +203,23 @@ export const useSchedule = (initialYear = new Date().getFullYear()) => {
   }, [closures]);
 
   // Update schedule for a specific date
-  const updateDaySchedule = useCallback((dateStr, daySchedule) => {
-    setSchedule(prev => ({
-      ...prev,
+  const updateDaySchedule = useCallback(async (dateStr, daySchedule) => {
+    const newSchedule = {
+      ...schedule,
       [dateStr]: daySchedule
-    }));
-  }, []);
+    };
+    setSchedule(newSchedule);
+    localStorage.setItem(`${STORAGE_KEY}-${year}`, JSON.stringify(newSchedule));
+
+    // Save to API if available
+    if (useApi) {
+      try {
+        await scheduleApi.updateDay(dateStr, daySchedule);
+      } catch (err) {
+        console.warn('Failed to update day in API:', err);
+      }
+    }
+  }, [schedule, year, useApi]);
 
   return {
     year,
@@ -118,6 +227,7 @@ export const useSchedule = (initialYear = new Date().getFullYear()) => {
     closures,
     stats,
     isLoading,
+    error,
     setYear: changeYear,
     generateSchedule,
     addClosure,

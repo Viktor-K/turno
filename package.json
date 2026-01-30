@@ -13,6 +13,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@vercel/postgres": "^0.10.0",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",
     "react": "^19.2.0",

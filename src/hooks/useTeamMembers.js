@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { teamMembersApi } from '../services/api';
 
 // Default team member data
 const DEFAULT_TEAM_MEMBERS = [
@@ -49,6 +50,33 @@ export const useTeamMembers = () => {
     }
     return DEFAULT_TEAM_MEMBERS;
   });
+  const [isLoading, setIsLoading] = useState(true);
+  const [useApi, setUseApi] = useState(true);
+
+  // Load from API on mount
+  useEffect(() => {
+    const loadFromApi = async () => {
+      if (!useApi) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await teamMembersApi.getAll();
+        if (response.teamMembers && response.teamMembers.length > 0) {
+          setTeamMembers(response.teamMembers);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(response.teamMembers));
+        }
+      } catch (err) {
+        console.warn('API unavailable for team members, using localStorage:', err);
+        setUseApi(false);
+      }
+
+      setIsLoading(false);
+    };
+
+    loadFromApi();
+  }, [useApi]);
 
   // Save to localStorage when teamMembers changes
   useEffect(() => {
@@ -56,7 +84,8 @@ export const useTeamMembers = () => {
   }, [teamMembers]);
 
   // Update a team member
-  const updateMember = (memberId, updates) => {
+  const updateMember = useCallback(async (memberId, updates) => {
+    // Update local state first (optimistic update)
     setTeamMembers(prev =>
       prev.map(member =>
         member.id === memberId
@@ -64,26 +93,54 @@ export const useTeamMembers = () => {
           : member
       )
     );
-  };
+
+    // Save to API if available
+    if (useApi) {
+      try {
+        await teamMembersApi.update(memberId, updates);
+      } catch (err) {
+        console.warn('Failed to update team member in API:', err);
+      }
+    }
+  }, [useApi]);
 
   // Get member by name (for backward compatibility with schedule data)
-  const getMemberByName = (name) => {
+  const getMemberByName = useCallback((name) => {
     return teamMembers.find(m => m.firstName === name);
-  };
+  }, [teamMembers]);
 
   // Get color classes for a member by name
-  const getMemberColor = (name) => {
+  const getMemberColor = useCallback((name) => {
     const member = getMemberByName(name);
     return member?.color || 'bg-gray-100 text-gray-700 border-gray-200';
-  };
+  }, [getMemberByName]);
 
   // Reset to defaults
-  const resetToDefaults = () => {
+  const resetToDefaults = useCallback(async () => {
     setTeamMembers(DEFAULT_TEAM_MEMBERS);
-  };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_TEAM_MEMBERS));
+
+    // Note: API reset would require deleting and recreating all members
+    // For simplicity, we just update each member to default values
+    if (useApi) {
+      try {
+        for (const member of DEFAULT_TEAM_MEMBERS) {
+          await teamMembersApi.update(member.id, {
+            firstName: member.firstName,
+            lastName: member.lastName,
+            email: member.email,
+            color: member.color
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to reset team members in API:', err);
+      }
+    }
+  }, [useApi]);
 
   return {
     teamMembers,
+    isLoading,
     updateMember,
     getMemberByName,
     getMemberColor,
