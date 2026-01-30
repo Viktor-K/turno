@@ -30,13 +30,14 @@ export const VIEW_MODES = {
   YEAR: 'year'
 };
 
+// 8 distinct colors for team members (no similar shades)
 export const MEMBER_COLORS = {
-  'Gabriela': 'bg-pink-50 text-pink-600 border-pink-200',
-  'Usfar': 'bg-sky-50 text-sky-600 border-sky-200',
-  'Fabio': 'bg-emerald-50 text-emerald-600 border-emerald-200',
-  'Elisa': 'bg-amber-50 text-amber-600 border-amber-200',
-  'Marina': 'bg-violet-50 text-violet-600 border-violet-200',
-  'Stefania': 'bg-rose-50 text-rose-600 border-rose-200',
-  'Virginia': 'bg-indigo-50 text-indigo-600 border-indigo-200',
-  'Silvia': 'bg-cyan-50 text-cyan-600 border-cyan-200'
+  'Gabriela': 'bg-pink-100 text-pink-700 border-pink-300',
+  'Usfar': 'bg-orange-100 text-orange-700 border-orange-300',
+  'Fabio': 'bg-emerald-100 text-emerald-700 border-emerald-300',
+  'Elisa': 'bg-yellow-100 text-yellow-700 border-yellow-300',
+  'Marina': 'bg-purple-100 text-purple-700 border-purple-300',
+  'Stefania': 'bg-red-100 text-red-700 border-red-300',
+  'Virginia': 'bg-blue-100 text-blue-700 border-blue-300',
+  'Silvia': 'bg-teal-100 text-teal-700 border-teal-300'
 };
