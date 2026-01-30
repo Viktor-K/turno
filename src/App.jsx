@@ -45,7 +45,7 @@ function App() {
     setIsAuthenticated(false);
   };
 
-  const [currentView, setCurrentView] = useState(VIEW_MODES.MONTH);
+  const [currentView, setCurrentView] = useState(VIEW_MODES.WEEK);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isClosuresOpen, setIsClosuresOpen] = useState(false);
   const [isStatsOpen, setIsStatsOpen] = useState(false);
