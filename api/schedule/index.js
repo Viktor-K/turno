@@ -204,14 +204,15 @@ export default async function handler(req, res) {
       const endDate = `${yearNum}-${String(monthNum + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
       // Delete all schedule_days (and cascade to shift_assignments) for the month
-      const deleteResult = await execute(
-        `DELETE FROM schedule_days WHERE date >= $1::date AND date <= $2::date RETURNING id`,
-        [startDate, endDate]
-      );
+      const deleteResult = await query`
+        DELETE FROM schedule_days
+        WHERE date >= ${startDate}::date AND date <= ${endDate}::date
+        RETURNING id
+      `;
 
       return res.status(200).json({
         success: true,
-        deletedDays: deleteResult.rowCount || 0
+        deletedDays: deleteResult.rows?.length || deleteResult.rowCount || 0
       });
     }
 
