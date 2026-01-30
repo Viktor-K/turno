@@ -1,4 +1,4 @@
-import { sql } from '@vercel/postgres';
+import { query, transaction } from '../lib/db.js';
 
 export default async function handler(req, res) {
   // CORS headers
@@ -15,7 +15,7 @@ export default async function handler(req, res) {
       // Get schedule for a year
       const year = req.query.year || new Date().getFullYear();
 
-      const result = await sql`
+      const result = await query`
         SELECT
           sd.date,
           sd.is_closure,
@@ -64,31 +64,28 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'year and schedule are required' });
       }
 
-      // Start transaction
-      await sql`BEGIN`;
+      let daysProcessed = 0;
 
-      try {
+      await transaction(async (txQuery) => {
         // Delete existing schedule for the year
-        await sql`
+        await txQuery`
           DELETE FROM schedule_days
           WHERE year = ${year}
         `;
 
         // Get team members lookup
-        const membersResult = await sql`SELECT id, first_name FROM team_members`;
+        const membersResult = await txQuery`SELECT id, first_name FROM team_members`;
         const memberLookup = {};
         membersResult.rows.forEach(row => {
           memberLookup[row.first_name] = row.id;
         });
-
-        let daysProcessed = 0;
 
         // Insert all days
         for (const [dateStr, dayData] of Object.entries(schedule)) {
           const dateYear = parseInt(dateStr.split('-')[0]);
 
           // Insert schedule day
-          const dayResult = await sql`
+          const dayResult = await txQuery`
             INSERT INTO schedule_days (date, year, is_closure)
             VALUES (${dateStr}::date, ${dateYear}, ${dayData.closure || false})
             RETURNING id
@@ -100,7 +97,7 @@ export default async function handler(req, res) {
             for (const shift of dayData.shifts) {
               const memberId = memberLookup[shift.member];
               if (memberId) {
-                await sql`
+                await txQuery`
                   INSERT INTO shift_assignments (schedule_day_id, member_id, shift_type_id)
                   VALUES (${dayId}, ${memberId}, ${shift.shift.id})
                 `;
@@ -110,17 +107,12 @@ export default async function handler(req, res) {
 
           daysProcessed++;
         }
+      });
 
-        await sql`COMMIT`;
-
-        return res.status(200).json({
-          success: true,
-          daysProcessed
-        });
-      } catch (error) {
-        await sql`ROLLBACK`;
-        throw error;
-      }
+      return res.status(200).json({
+        success: true,
+        daysProcessed
+      });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });

@@ -1,4 +1,4 @@
-import { sql } from '@vercel/postgres';
+import { query } from '../lib/db.js';
 
 export default async function handler(req, res) {
   // CORS headers
@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       // Get all team members
-      const result = await sql`
+      const result = await query`
         SELECT id, first_name, last_name, email, color, created_at, updated_at
         FROM team_members
         ORDER BY first_name
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'id, firstName, and color are required' });
       }
 
-      await sql`
+      await query`
         INSERT INTO team_members (id, first_name, last_name, email, color)
         VALUES (${id}, ${firstName}, ${lastName || ''}, ${email || ''}, ${color})
       `;

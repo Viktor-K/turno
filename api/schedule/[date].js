@@ -1,4 +1,4 @@
-import { sql } from '@vercel/postgres';
+import { query, transaction } from '../lib/db.js';
 
 export default async function handler(req, res) {
   // CORS headers
@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const result = await sql`
+      const result = await query`
         SELECT
           sd.date,
           sd.is_closure,
@@ -62,28 +62,27 @@ export default async function handler(req, res) {
       const dateYear = parseInt(date.split('-')[0]);
 
       // Get team members lookup
-      const membersResult = await sql`SELECT id, first_name FROM team_members`;
+      const membersResult = await query`SELECT id, first_name FROM team_members`;
       const memberLookup = {};
       membersResult.rows.forEach(row => {
         memberLookup[row.first_name] = row.id;
       });
 
-      // Start transaction
-      await sql`BEGIN`;
+      let dayId;
 
-      try {
+      await transaction(async (txQuery) => {
         // Upsert schedule day
-        const dayResult = await sql`
+        const dayResult = await txQuery`
           INSERT INTO schedule_days (date, year, is_closure, updated_at)
           VALUES (${date}::date, ${dateYear}, ${closure || false}, CURRENT_TIMESTAMP)
           ON CONFLICT (date)
           DO UPDATE SET is_closure = ${closure || false}, updated_at = CURRENT_TIMESTAMP
           RETURNING id
         `;
-        const dayId = dayResult.rows[0].id;
+        dayId = dayResult.rows[0].id;
 
         // Delete existing assignments for this day
-        await sql`
+        await txQuery`
           DELETE FROM shift_assignments
           WHERE schedule_day_id = ${dayId}
         `;
@@ -93,30 +92,25 @@ export default async function handler(req, res) {
           for (const shift of shifts) {
             const memberId = memberLookup[shift.member];
             if (memberId) {
-              await sql`
+              await txQuery`
                 INSERT INTO shift_assignments (schedule_day_id, member_id, shift_type_id)
                 VALUES (${dayId}, ${memberId}, ${shift.shift.id})
               `;
             }
           }
         }
+      });
 
-        await sql`COMMIT`;
-
-        return res.status(200).json({
-          success: true,
-          date,
-          closure: closure || false,
-          shiftsCount: shifts?.length || 0
-        });
-      } catch (error) {
-        await sql`ROLLBACK`;
-        throw error;
-      }
+      return res.status(200).json({
+        success: true,
+        date,
+        closure: closure || false,
+        shiftsCount: shifts?.length || 0
+      });
     }
 
     if (req.method === 'DELETE') {
-      const result = await sql`
+      const result = await query`
         DELETE FROM schedule_days
         WHERE date = ${date}::date
         RETURNING id

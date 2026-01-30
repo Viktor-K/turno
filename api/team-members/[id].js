@@ -1,4 +1,4 @@
-import { sql } from '@vercel/postgres';
+import { query } from '../lib/db.js';
 
 export default async function handler(req, res) {
   // CORS headers
@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const result = await sql`
+      const result = await query`
         SELECT id, first_name, last_name, email, color
         FROM team_members
         WHERE id = ${id}
@@ -70,20 +70,20 @@ export default async function handler(req, res) {
 
       // Use individual update for each field to avoid SQL injection
       if (firstName !== undefined) {
-        await sql`UPDATE team_members SET first_name = ${firstName}, updated_at = CURRENT_TIMESTAMP WHERE id = ${id}`;
+        await query`UPDATE team_members SET first_name = ${firstName}, updated_at = CURRENT_TIMESTAMP WHERE id = ${id}`;
       }
       if (lastName !== undefined) {
-        await sql`UPDATE team_members SET last_name = ${lastName}, updated_at = CURRENT_TIMESTAMP WHERE id = ${id}`;
+        await query`UPDATE team_members SET last_name = ${lastName}, updated_at = CURRENT_TIMESTAMP WHERE id = ${id}`;
       }
       if (email !== undefined) {
-        await sql`UPDATE team_members SET email = ${email}, updated_at = CURRENT_TIMESTAMP WHERE id = ${id}`;
+        await query`UPDATE team_members SET email = ${email}, updated_at = CURRENT_TIMESTAMP WHERE id = ${id}`;
       }
       if (color !== undefined) {
-        await sql`UPDATE team_members SET color = ${color}, updated_at = CURRENT_TIMESTAMP WHERE id = ${id}`;
+        await query`UPDATE team_members SET color = ${color}, updated_at = CURRENT_TIMESTAMP WHERE id = ${id}`;
       }
 
       // Fetch updated record
-      const result = await sql`
+      const result = await query`
         SELECT id, first_name, last_name, email, color
         FROM team_members
         WHERE id = ${id}
@@ -107,7 +107,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'DELETE') {
-      const result = await sql`
+      const result = await query`
         DELETE FROM team_members
         WHERE id = ${id}
         RETURNING id

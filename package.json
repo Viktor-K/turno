@@ -5,6 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:vercel": "vercel dev",
+    "db:start": "./scripts/dev-db.sh start",
+    "db:stop": "./scripts/dev-db.sh stop",
+    "db:reset": "./scripts/dev-db.sh reset",
+    "db:logs": "./scripts/dev-db.sh logs",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -16,6 +21,7 @@
     "@vercel/postgres": "^0.10.0",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",
+    "pg": "^8.18.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

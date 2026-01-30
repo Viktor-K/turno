@@ -1,4 +1,4 @@
-import { sql } from '@vercel/postgres';
+import { query } from '../lib/db.js';
 
 export default async function handler(req, res) {
   // CORS headers
@@ -19,14 +19,14 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'DELETE') {
       // Remove a specific closure
-      const result = await sql`
+      const result = await query`
         DELETE FROM closures
         WHERE closure_date = ${date}::date
         RETURNING id
       `;
 
       // Also update schedule_days if exists
-      await sql`
+      await query`
         UPDATE schedule_days
         SET is_closure = false, updated_at = CURRENT_TIMESTAMP
         WHERE date = ${date}::date
