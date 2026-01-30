@@ -1,6 +1,6 @@
-import { DAYS_OF_WEEK, MONTHS, MEMBER_COLORS, SHIFTS } from '../utils/constants';
+import { DAYS_OF_WEEK, MONTHS, SHIFTS } from '../utils/constants';
 
-const DayDetailModal = ({ isOpen, onClose, date, daySchedule, isClosure, onToggleClosure }) => {
+const DayDetailModal = ({ isOpen, onClose, date, daySchedule, isClosure, onToggleClosure, getMemberColor }) => {
   if (!isOpen || !date) return null;
 
   const dayOfWeek = date.getDay();
@@ -77,7 +77,7 @@ const DayDetailModal = ({ isOpen, onClose, date, daySchedule, isClosure, onToggl
                       {group.members.map(member => (
                         <div
                           key={member}
-                          className={`px-3 py-2 rounded-lg border ${MEMBER_COLORS[member]} font-medium`}
+                          className={`px-3 py-2 rounded-lg border ${getMemberColor ? getMemberColor(member) : 'bg-gray-100 text-gray-700 border-gray-200'} font-medium`}
                         >
                           {member}
                         </div>

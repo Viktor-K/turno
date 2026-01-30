@@ -1,6 +1,6 @@
-import { TEAM_MEMBERS, MEMBER_COLORS } from '../utils/constants';
+import { TEAM_MEMBERS } from '../utils/constants';
 
-const StatsPanel = ({ stats, isOpen, onClose }) => {
+const StatsPanel = ({ stats, isOpen, onClose, getMemberColor }) => {
   if (!isOpen) return null;
 
   const hasStats = Object.keys(stats).length > 0;
@@ -101,7 +101,7 @@ const StatsPanel = ({ stats, isOpen, onClose }) => {
               <div className="space-y-4">
                 {TEAM_MEMBERS.map(member => {
                   const memberStats = stats[member] || { earlyShifts: 0, lateShifts: 0, standardShifts: 0, weekendShifts: 0 };
-                  const colorClass = MEMBER_COLORS[member];
+                  const colorClass = getMemberColor ? getMemberColor(member) : 'bg-gray-100 text-gray-700 border-gray-200';
 
                   return (
                     <div key={member} className="bg-gray-50 rounded-lg p-4">

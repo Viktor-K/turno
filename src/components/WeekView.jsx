@@ -1,4 +1,5 @@
-import { DAYS_OF_WEEK, MEMBER_COLORS, SHIFTS } from '../utils/constants';
+import { useState } from 'react';
+import { DAYS_OF_WEEK, SHIFTS } from '../utils/constants';
 import { formatDate, getWeekStart, addDays, getWeekNumber } from '../utils/dateUtils';
 
 // Shift accent colors for left border indicator
@@ -7,6 +8,22 @@ const SHIFT_ACCENTS = {
   standard: 'border-l-emerald-500',
   late: 'border-l-violet-500',
   weekend: 'border-l-amber-500'
+};
+
+// Shift background colors (subtle, matching the accent colors)
+const SHIFT_BACKGROUNDS = {
+  early: 'bg-sky-50/60',
+  standard: 'bg-emerald-50/60',
+  late: 'bg-violet-50/60',
+  weekend: 'bg-amber-50/60'
+};
+
+// Shift header background colors (slightly more visible)
+const SHIFT_HEADER_BACKGROUNDS = {
+  early: 'bg-sky-100/70 hover:bg-sky-100',
+  standard: 'bg-emerald-100/70 hover:bg-emerald-100',
+  late: 'bg-violet-100/70 hover:bg-violet-100',
+  weekend: 'bg-amber-100/70 hover:bg-amber-100'
 };
 
 const SHIFT_ICONS = {
@@ -32,8 +49,20 @@ const SHIFT_ICONS = {
   )
 };
 
-const PersonChip = ({ member }) => {
-  const colorClass = MEMBER_COLORS[member] || 'bg-gray-100 text-gray-700 border-gray-200';
+const ChevronIcon = ({ isCollapsed }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className={`h-3 w-3 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+  </svg>
+);
+
+const PersonChip = ({ member, getMemberColor }) => {
+  const colorClass = getMemberColor ? getMemberColor(member) : 'bg-gray-100 text-gray-700 border-gray-200';
 
   return (
     <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium border whitespace-nowrap ${colorClass}`}>
@@ -50,36 +79,52 @@ const SHIFT_HEIGHTS = {
   weekend: 'min-h-[95px]'     // 2 people + padding
 };
 
-const ShiftBlock = ({ shiftType, members, isEmpty }) => {
+const ShiftBlock = ({ shiftType, members, isEmpty, isCollapsed, onToggleCollapse, getMemberColor }) => {
   const accentColor = SHIFT_ACCENTS[shiftType.id] || 'border-l-gray-400';
+  const bgColor = SHIFT_BACKGROUNDS[shiftType.id] || 'bg-gray-50/60';
+  const headerBgColor = SHIFT_HEADER_BACKGROUNDS[shiftType.id] || 'bg-gray-100/70 hover:bg-gray-100';
   const icon = SHIFT_ICONS[shiftType.id];
-  const heightClass = SHIFT_HEIGHTS[shiftType.id] || 'h-[80px]';
+  const heightClass = isCollapsed ? '' : (SHIFT_HEIGHTS[shiftType.id] || 'min-h-[80px]');
 
   return (
-    <div className={`flex flex-col bg-white border border-gray-200 rounded-lg overflow-hidden border-l-4 ${accentColor} shadow-sm ${heightClass} ${isEmpty ? 'opacity-40' : ''}`}>
-      {/* Shift header */}
-      <div className="px-2 py-1 bg-gray-50 border-b border-gray-100 flex-shrink-0">
-        <div className="flex items-center gap-1.5 text-gray-600">
-          {icon}
-          <span className="text-[11px] font-semibold">{shiftType.name}</span>
+    <div className={`flex flex-col ${bgColor} border border-gray-200 rounded-lg overflow-hidden border-l-4 ${accentColor} shadow-sm ${heightClass} ${isEmpty ? 'opacity-40' : ''} transition-all duration-200`}>
+      {/* Shift header - clickable */}
+      <div
+        className={`px-2 py-1 ${headerBgColor} border-b border-gray-100/50 flex-shrink-0 cursor-pointer transition-colors`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleCollapse(shiftType.id);
+        }}
+      >
+        <div className="flex items-center justify-between text-gray-600">
+          <div className="flex items-center gap-1.5">
+            {icon}
+            <span className="text-[11px] font-semibold">{shiftType.name}</span>
+            {isCollapsed && members.length > 0 && (
+              <span className="text-[10px] text-gray-400 ml-1">({members.length})</span>
+            )}
+          </div>
+          <ChevronIcon isCollapsed={isCollapsed} />
         </div>
       </div>
 
       {/* People chips - vertical stack, left aligned, vertically centered */}
-      <div className="px-1.5 py-2 flex-1 flex flex-col gap-1 items-start justify-center">
-        {members.length > 0 ? (
-          members.map(member => (
-            <PersonChip key={member} member={member} />
-          ))
-        ) : (
-          <span className="text-[10px] text-gray-400 italic">Nessuno</span>
-        )}
-      </div>
+      {!isCollapsed && (
+        <div className="px-1.5 py-2 flex-1 flex flex-col gap-1 items-start justify-center">
+          {members.length > 0 ? (
+            members.map(member => (
+              <PersonChip key={member} member={member} getMemberColor={getMemberColor} />
+            ))
+          ) : (
+            <span className="text-[10px] text-gray-400 italic">Nessuno</span>
+          )}
+        </div>
+      )}
     </div>
   );
 };
 
-const DayColumn = ({ date, daySchedule, isWeekend, isClosure, onClick }) => {
+const DayColumn = ({ date, daySchedule, isWeekend, isClosure, onClick, collapsedShifts, onToggleCollapse, getMemberColor }) => {
   const dayOfWeek = date.getDay();
   const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
   const dayName = DAYS_OF_WEEK[dayIndex];
@@ -104,7 +149,7 @@ const DayColumn = ({ date, daySchedule, isWeekend, isClosure, onClick }) => {
   return (
     <div
       onClick={() => onClick && onClick(date)}
-      className={`flex-1 min-w-[140px] border-r last:border-r-0 cursor-pointer transition-colors ${
+      className={`flex-1 min-w-0 border-r last:border-r-0 cursor-pointer transition-colors ${
         isWeekend ? 'bg-slate-50/50 hover:bg-slate-100/50' : 'hover:bg-gray-50/50'
       } ${isClosure ? 'bg-rose-50/30 hover:bg-rose-50/50' : ''}`}
     >
@@ -146,6 +191,9 @@ const DayColumn = ({ date, daySchedule, isWeekend, isClosure, onClick }) => {
                     shiftType={shiftType}
                     members={members}
                     isEmpty={members.length === 0}
+                    isCollapsed={collapsedShifts[shiftType.id]}
+                    onToggleCollapse={onToggleCollapse}
+                    getMemberColor={getMemberColor}
                   />
                 );
               })}
@@ -163,9 +211,24 @@ const DayColumn = ({ date, daySchedule, isWeekend, isClosure, onClick }) => {
   );
 };
 
-const WeekView = ({ currentDate, schedule, closures, onDayClick }) => {
+const WeekView = ({ currentDate, schedule, closures, onDayClick, getMemberColor }) => {
   const weekStart = getWeekStart(currentDate);
   const weekNumber = getWeekNumber(currentDate);
+
+  // State for collapsed shifts
+  const [collapsedShifts, setCollapsedShifts] = useState({
+    early: false,
+    standard: false,
+    late: false,
+    weekend: false
+  });
+
+  const toggleCollapse = (shiftId) => {
+    setCollapsedShifts(prev => ({
+      ...prev,
+      [shiftId]: !prev[shiftId]
+    }));
+  };
 
   const days = [];
   for (let i = 0; i < 7; i++) {
@@ -192,7 +255,7 @@ const WeekView = ({ currentDate, schedule, closures, onDayClick }) => {
       </div>
 
       {/* Days Grid */}
-      <div className="flex overflow-x-auto">
+      <div className="flex">
         {days.map(date => {
           const dateKey = formatDate(date);
           const daySchedule = schedule[dateKey];
@@ -207,30 +270,49 @@ const WeekView = ({ currentDate, schedule, closures, onDayClick }) => {
               isWeekend={isWeekend}
               isClosure={isClosure}
               onClick={onDayClick}
+              collapsedShifts={collapsedShifts}
+              onToggleCollapse={toggleCollapse}
+              getMemberColor={getMemberColor}
             />
           );
         })}
       </div>
 
-      {/* Legend */}
+      {/* Legend - clickable to toggle collapse */}
       <div className="bg-gray-50 border-t px-4 py-2">
         <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
           <span className="font-medium text-gray-600">Fasce orarie:</span>
-          <div className="flex items-center gap-1.5">
+          <div
+            className={`flex items-center gap-1.5 cursor-pointer hover:text-gray-700 transition-colors ${collapsedShifts.early ? 'opacity-50' : ''}`}
+            onClick={() => toggleCollapse('early')}
+          >
             <div className="w-3 h-3 rounded border-l-2 border-l-sky-500 bg-white border border-gray-200"></div>
             <span>8-17 (Mattina)</span>
+            <ChevronIcon isCollapsed={collapsedShifts.early} />
           </div>
-          <div className="flex items-center gap-1.5">
+          <div
+            className={`flex items-center gap-1.5 cursor-pointer hover:text-gray-700 transition-colors ${collapsedShifts.standard ? 'opacity-50' : ''}`}
+            onClick={() => toggleCollapse('standard')}
+          >
             <div className="w-3 h-3 rounded border-l-2 border-l-emerald-500 bg-white border border-gray-200"></div>
             <span>9-18 (Standard)</span>
+            <ChevronIcon isCollapsed={collapsedShifts.standard} />
           </div>
-          <div className="flex items-center gap-1.5">
+          <div
+            className={`flex items-center gap-1.5 cursor-pointer hover:text-gray-700 transition-colors ${collapsedShifts.late ? 'opacity-50' : ''}`}
+            onClick={() => toggleCollapse('late')}
+          >
             <div className="w-3 h-3 rounded border-l-2 border-l-violet-500 bg-white border border-gray-200"></div>
             <span>12-21 (Sera)</span>
+            <ChevronIcon isCollapsed={collapsedShifts.late} />
           </div>
-          <div className="flex items-center gap-1.5">
+          <div
+            className={`flex items-center gap-1.5 cursor-pointer hover:text-gray-700 transition-colors ${collapsedShifts.weekend ? 'opacity-50' : ''}`}
+            onClick={() => toggleCollapse('weekend')}
+          >
             <div className="w-3 h-3 rounded border-l-2 border-l-amber-500 bg-white border border-gray-200"></div>
             <span>Weekend</span>
+            <ChevronIcon isCollapsed={collapsedShifts.weekend} />
           </div>
         </div>
       </div>

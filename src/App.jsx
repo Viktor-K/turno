@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { VIEW_MODES } from './utils/constants';
 import { formatDate, generateScheduleHash } from './utils/dateUtils';
 import { useSchedule } from './hooks/useSchedule';
+import { useTeamMembers } from './hooks/useTeamMembers';
 import Header from './components/Header';
 import DateNavigator from './components/DateNavigator';
 import WeekView from './components/WeekView';
@@ -14,6 +15,7 @@ import EditDayModal from './components/EditDayModal';
 import ViolationModal from './components/ViolationModal';
 import RulesModal from './components/RulesModal';
 import TeamSidebar from './components/TeamSidebar';
+import TeamMemberModal from './components/TeamMemberModal';
 import LoginPage from './components/LoginPage';
 import { getScheduleStats } from './utils/shiftGenerator';
 import { downloadMonthPDF, downloadYearPDF } from './utils/pdfGenerator';
@@ -73,6 +75,26 @@ function App() {
     isClosure,
     updateDaySchedule
   } = useSchedule(currentDate.getFullYear());
+
+  // Team members management
+  const {
+    teamMembers,
+    updateMember,
+    getMemberColor
+  } = useTeamMembers();
+
+  // Team member modal state
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
+
+  const handleMemberClick = (member) => {
+    setSelectedMember(member);
+    setIsMemberModalOpen(true);
+  };
+
+  const handleMemberUpdate = (memberId, updates) => {
+    updateMember(memberId, updates);
+  };
 
   // Sync year with currentDate
   useEffect(() => {
@@ -145,6 +167,7 @@ function App() {
             schedule={schedule}
             closures={closures}
             onDayClick={handleDayClick}
+            getMemberColor={getMemberColor}
           />
         );
       case VIEW_MODES.MONTH:
@@ -154,6 +177,7 @@ function App() {
             schedule={schedule}
             closures={closures}
             onDayClick={handleDayClick}
+            getMemberColor={getMemberColor}
           />
         );
       case VIEW_MODES.QUARTER:
@@ -212,11 +236,14 @@ function App() {
       />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main className={`mx-auto px-4 py-6 ${currentView === VIEW_MODES.WEEK ? 'max-w-full' : 'max-w-7xl'}`}>
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Team Sidebar */}
-          <div className="lg:w-64 flex-shrink-0">
-            <TeamSidebar />
+          <div className="lg:w-48 flex-shrink-0">
+            <TeamSidebar
+              teamMembers={teamMembers}
+              onMemberClick={handleMemberClick}
+            />
           </div>
 
           {/* Calendar Content */}
@@ -308,6 +335,7 @@ function App() {
         stats={currentStats}
         isOpen={isStatsOpen}
         onClose={() => setIsStatsOpen(false)}
+        getMemberColor={getMemberColor}
       />
 
       <EditDayModal
@@ -318,6 +346,7 @@ function App() {
         schedule={schedule}
         onUpdateSchedule={updateDaySchedule}
         onViolation={handleViolation}
+        getMemberColor={getMemberColor}
       />
 
       <ViolationModal
@@ -331,6 +360,13 @@ function App() {
       <RulesModal
         isOpen={isRulesOpen}
         onClose={() => setIsRulesOpen(false)}
+      />
+
+      <TeamMemberModal
+        isOpen={isMemberModalOpen}
+        onClose={() => setIsMemberModalOpen(false)}
+        member={selectedMember}
+        onUpdate={handleMemberUpdate}
       />
 
       {/* Footer */}

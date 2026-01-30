@@ -1,4 +1,4 @@
-import { MONTHS, MEMBER_COLORS } from '../utils/constants';
+import { MONTHS } from '../utils/constants';
 import { formatDate, getMonthStart, getMonthEnd, getDaysInRange, addDays } from '../utils/dateUtils';
 
 const MiniMonth = ({ month, year, schedule, closures }) => {

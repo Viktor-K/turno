@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { DAYS_OF_WEEK, MONTHS, MEMBER_COLORS, SHIFTS, TEAM_MEMBERS } from '../utils/constants';
+import { DAYS_OF_WEEK, MONTHS, SHIFTS, TEAM_MEMBERS } from '../utils/constants';
 import { validateChange, getAvailableMembers } from '../utils/constraintValidator';
 import { formatDate } from '../utils/dateUtils';
 
-const EditDayModal = ({ isOpen, onClose, date, daySchedule, schedule, onUpdateSchedule, onViolation }) => {
+const EditDayModal = ({ isOpen, onClose, date, daySchedule, schedule, onUpdateSchedule, onViolation, getMemberColor }) => {
   const [localSchedule, setLocalSchedule] = useState(null);
   const [addingToShift, setAddingToShift] = useState(null);
 
@@ -160,7 +160,7 @@ const EditDayModal = ({ isOpen, onClose, date, daySchedule, schedule, onUpdateSc
                     {members.map(member => (
                       <div
                         key={member}
-                        className={`px-3 py-2 rounded-lg border ${MEMBER_COLORS[member]} flex items-center justify-between group`}
+                        className={`px-3 py-2 rounded-lg border ${getMemberColor ? getMemberColor(member) : 'bg-gray-100 text-gray-700 border-gray-200'} flex items-center justify-between group`}
                       >
                         <span className="font-medium">{member}</span>
                         <div className="flex items-center gap-1">
@@ -213,7 +213,7 @@ const EditDayModal = ({ isOpen, onClose, date, daySchedule, schedule, onUpdateSc
                             <button
                               key={member}
                               onClick={() => handleAddMember(member, shiftType.id)}
-                              className={`px-2 py-1 text-xs rounded border ${MEMBER_COLORS[member]} hover:opacity-80 transition-opacity cursor-pointer`}
+                              className={`px-2 py-1 text-xs rounded border ${getMemberColor ? getMemberColor(member) : 'bg-gray-100 text-gray-700 border-gray-200'} hover:opacity-80 transition-opacity cursor-pointer`}
                             >
                               {member}
                             </button>
@@ -254,7 +254,7 @@ const EditDayModal = ({ isOpen, onClose, date, daySchedule, schedule, onUpdateSc
                 {unassignedMembers.map(member => (
                   <span
                     key={member}
-                    className={`px-2 py-1 text-xs rounded border ${MEMBER_COLORS[member]}`}
+                    className={`px-2 py-1 text-xs rounded border ${getMemberColor ? getMemberColor(member) : 'bg-gray-100 text-gray-700 border-gray-200'}`}
                   >
                     {member}
                   </span>

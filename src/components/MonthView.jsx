@@ -1,7 +1,7 @@
-import { DAYS_OF_WEEK, MEMBER_COLORS, MONTHS } from '../utils/constants';
+import { DAYS_OF_WEEK, MONTHS } from '../utils/constants';
 import { formatDate, getMonthStart, getMonthEnd, getDaysInRange, addDays } from '../utils/dateUtils';
 
-const DayCell = ({ date, daySchedule, isCurrentMonth, isClosure, isToday, onClick }) => {
+const DayCell = ({ date, daySchedule, isCurrentMonth, isClosure, isToday, onClick, getMemberColor }) => {
   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
   const shiftsCount = daySchedule && daySchedule.shifts ? daySchedule.shifts.length : 0;
 
@@ -30,7 +30,7 @@ const DayCell = ({ date, daySchedule, isCurrentMonth, isClosure, isToday, onClic
             {daySchedule.shifts.slice(0, 4).map(({ member, shift }, idx) => (
               <div
                 key={idx}
-                className={`text-[10px] px-1 rounded truncate ${MEMBER_COLORS[member]}`}
+                className={`text-[10px] px-1 rounded truncate ${getMemberColor ? getMemberColor(member) : 'bg-gray-100 text-gray-700'}`}
                 title={`${member} - ${shift.name}`}
               >
                 {member.substring(0, 3)}
@@ -53,7 +53,7 @@ const DayCell = ({ date, daySchedule, isCurrentMonth, isClosure, isToday, onClic
   );
 };
 
-const MonthView = ({ currentDate, schedule, closures, onDayClick }) => {
+const MonthView = ({ currentDate, schedule, closures, onDayClick, getMemberColor }) => {
   const monthStart = getMonthStart(currentDate);
   const monthEnd = getMonthEnd(currentDate);
   const month = currentDate.getMonth();
@@ -120,6 +120,7 @@ const MonthView = ({ currentDate, schedule, closures, onDayClick }) => {
                   isClosure={isClosure}
                   isToday={isToday}
                   onClick={onDayClick}
+                  getMemberColor={getMemberColor}
                 />
               );
             })}
