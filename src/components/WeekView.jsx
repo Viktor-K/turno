@@ -42,12 +42,12 @@ const PersonChip = ({ member }) => {
   );
 };
 
-// Fixed heights for each shift type (single column layout, with padding)
+// Fixed heights for each shift type (single column layout, with generous padding)
 const SHIFT_HEIGHTS = {
-  early: 'h-[58px]',      // 1 person + padding
-  standard: 'h-[180px]',  // Multiple people (up to 6, stacked vertically) + padding
-  late: 'h-[58px]',       // 1 person + padding
-  weekend: 'h-[82px]'     // 2 people + padding
+  early: 'h-[60px]',      // 1 person + padding
+  standard: 'h-[205px]',  // Multiple people (up to 6, stacked vertically) + padding
+  late: 'h-[60px]',       // 1 person + padding
+  weekend: 'h-[95px]'     // 2 people + padding
 };
 
 const ShiftBlock = ({ shiftType, members, isEmpty }) => {
@@ -66,7 +66,7 @@ const ShiftBlock = ({ shiftType, members, isEmpty }) => {
       </div>
 
       {/* People chips - vertical stack */}
-      <div className="px-1.5 pt-1.5 pb-2 flex-1 overflow-y-auto flex flex-col gap-1">
+      <div className="px-1.5 pt-1.5 pb-3 flex-1 overflow-y-auto flex flex-col gap-1">
         {members.length > 0 ? (
           members.map(member => (
             <PersonChip key={member} member={member} />
