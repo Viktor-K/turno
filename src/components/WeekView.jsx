@@ -65,8 +65,8 @@ const ShiftBlock = ({ shiftType, members, isEmpty }) => {
         </div>
       </div>
 
-      {/* People chips - vertical stack, centered */}
-      <div className="px-1.5 py-2 flex-1 overflow-y-auto flex flex-col gap-1 items-center justify-center">
+      {/* People chips - vertical stack, left aligned, vertically centered */}
+      <div className="px-1.5 py-2 flex-1 overflow-y-auto flex flex-col gap-1 items-start justify-center">
         {members.length > 0 ? (
           members.map(member => (
             <PersonChip key={member} member={member} />
