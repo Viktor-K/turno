@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { VIEW_MODES } from './utils/constants';
-import { formatDate } from './utils/dateUtils';
+import { formatDate, generateScheduleHash } from './utils/dateUtils';
 import { useSchedule } from './hooks/useSchedule';
 import Header from './components/Header';
 import DateNavigator from './components/DateNavigator';
@@ -288,6 +288,12 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 text-center text-sm">
           <p>Turno - Gestione Turni Team</p>
           <p className="text-xs mt-1">8 membri del team | Turni equi e bilanciati</p>
+          {/* Debug: Schedule hash */}
+          {generateScheduleHash(schedule) && (
+            <p className="text-[10px] mt-3 text-gray-600 font-mono select-all" title="Schedule fingerprint (debug)">
+              #{generateScheduleHash(schedule)}
+            </p>
+          )}
         </div>
       </footer>
     </div>

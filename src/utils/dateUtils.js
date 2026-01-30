@@ -118,3 +118,33 @@ export const getWeeksInYear = (year) => {
 
   return weeks;
 };
+
+// Generate a short hash from schedule data (for debugging)
+export const generateScheduleHash = (schedule) => {
+  if (!schedule || Object.keys(schedule).length === 0) {
+    return null;
+  }
+
+  // Create a deterministic string representation of the schedule
+  const sortedDates = Object.keys(schedule).sort();
+  const scheduleString = sortedDates.map(date => {
+    const day = schedule[date];
+    if (day.closure) return `${date}:C`;
+    const shifts = (day.shifts || [])
+      .map(s => `${s.member}:${s.shift.id}`)
+      .sort()
+      .join(',');
+    return `${date}:${shifts}`;
+  }).join('|');
+
+  // djb2 hash algorithm
+  let hash = 5381;
+  for (let i = 0; i < scheduleString.length; i++) {
+    hash = ((hash << 5) + hash) + scheduleString.charCodeAt(i);
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+
+  // Convert to hex and take last 8 characters
+  const hexHash = Math.abs(hash).toString(16).padStart(8, '0').slice(-8);
+  return hexHash.toUpperCase();
+};
